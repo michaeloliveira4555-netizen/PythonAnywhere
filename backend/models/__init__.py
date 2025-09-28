@@ -10,6 +10,8 @@ from .user_school import UserSchool
 from .aluno import Aluno
 from .instrutor import Instrutor
 from .turma import Turma
+# IMPORTAÇÃO CORRIGIDA
+from .ciclo import Ciclo
 from .disciplina import Disciplina
 from .disciplina_turma import DisciplinaTurma
 from .horario import Horario
@@ -35,6 +37,8 @@ __all__ = [
     'Aluno',
     'Instrutor',
     'Turma',
+    # EXPORTAÇÃO CORRIGIDA
+    'Ciclo',
     'Disciplina',
     'DisciplinaTurma',
     'Horario',

@@ -6,6 +6,7 @@ click==8.2.1
 colorama==0.4.6
 cssselect2==0.8.0
 Flask==3.1.2
+Flask-Babel  # <--- ADICIONADO AQUI
 Flask-Login==0.6.3
 Flask-Migrate==4.1.0
 Flask-SQLAlchemy==3.1.1

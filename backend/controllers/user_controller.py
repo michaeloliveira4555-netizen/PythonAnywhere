@@ -21,6 +21,9 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, SubmitField
+from wtforms.validators import DataRequired, Email, EqualTo, Optional
 
 # ===== DB =====
 try:
@@ -54,6 +57,16 @@ UserSchool = _import_first([
 ])
 
 user_bp = Blueprint("user", __name__, url_prefix="/user")
+
+# ===== Forms =====
+class MeuPerfilForm(FlaskForm):
+    nome_completo = StringField('Nome Completo', validators=[DataRequired()])
+    email = StringField('E-mail', validators=[DataRequired(), Email()])
+    current_password = PasswordField('Senha Atual', validators=[Optional()])
+    new_password = PasswordField('Nova Senha', validators=[Optional(), EqualTo('confirm_new_password', message='As senhas não correspondem.')])
+    confirm_new_password = PasswordField('Confirmar Nova Senha', validators=[Optional()])
+    submit = SubmitField('Salvar Alterações')
+
 
 # ===== Utils =====
 def norm_email(v: Optional[str]) -> Optional[str]:
@@ -123,47 +136,27 @@ def insert_user_school(user_id: int, school_id: int, role: str):
 @user_bp.route("/meu-perfil", methods=["GET", "POST"])
 @login_required
 def meu_perfil():
-    if request.method == "POST":
+    form = MeuPerfilForm(obj=current_user)
+    if form.validate_on_submit():
         try:
-            nome = (request.form.get("nome") or "").strip()
-            email = norm_email(request.form.get("email"))
-            telefone = (request.form.get("telefone") or "").strip()
-
-            if email and hasattr(current_user, "email") and email != getattr(current_user, "email", None):
-                if exists_in_users_by("email", email):
+            current_user.nome_completo = form.nome_completo.data
+            
+            # Verifica se o email foi alterado e se já existe
+            if form.email.data != current_user.email:
+                if exists_in_users_by("email", form.email.data):
                     flash("Este e-mail já está em uso.", "warning")
                     return redirect(url_for("user.meu_perfil"))
+                current_user.email = form.email.data
 
-            if hasattr(current_user, "nome_completo") and nome:
-                current_user.nome_completo = nome  # type: ignore
-            elif hasattr(current_user, "nome") and nome:
-                current_user.nome = nome  # type: ignore
-
-            if hasattr(current_user, "email") and email:
-                current_user.email = email  # type: ignore
-
-            if hasattr(current_user, "telefone") and telefone:
-                current_user.telefone = telefone  # type: ignore
-
-            nova_senha = (request.form.get("nova_senha") or "").strip()
-            conf = (request.form.get("confirmar_senha") or "").strip()
-            if nova_senha:
-                if nova_senha != conf:
-                    flash("A confirmação da senha não confere.", "warning")
-                    return redirect(url_for("user.meu_perfil"))
-                set_password_hash_on_user(current_user, nova_senha)
-                if hasattr(current_user, "must_change_password"):
-                    current_user.must_change_password = False  # type: ignore
-
-            avatar = request.files.get("avatar")
-            if avatar and avatar.filename:
-                filename = secure_filename(avatar.filename)
-                upload_dir = ensure_upload_dir(os.path.join("uploads", "avatars"))
-                abspath = os.path.join(upload_dir, filename)
-                avatar.save(abspath)
-                public_url = url_for("static", filename=f"uploads/avatars/{filename}")
-                if hasattr(current_user, "avatar_url"):
-                    current_user.avatar_url = public_url  # type: ignore
+            # Lógica para alteração de senha
+            if form.new_password.data:
+                if not current_user.check_password(form.current_password.data):
+                    flash("A senha atual está incorreta.", "danger")
+                else:
+                    set_password_hash_on_user(current_user, form.new_password.data)
+                    if hasattr(current_user, "must_change_password"):
+                        current_user.must_change_password = False
+                    flash("Senha alterada com sucesso.", "success")
 
             db.session.commit()
             flash("Perfil atualizado com sucesso.", "success")
@@ -177,7 +170,7 @@ def meu_perfil():
             current_app.logger.exception("Erro ao salvar Meu Perfil")
             flash("Ocorreu um erro ao salvar seu perfil.", "danger")
 
-    return render_template("meu_perfil.html", user=current_user)
+    return render_template("meu_perfil.html", user=current_user, form=form)
 
 # ===== Criar Administrador da Escola =====
 @user_bp.route("/criar-admin", methods=["GET", "POST"])
