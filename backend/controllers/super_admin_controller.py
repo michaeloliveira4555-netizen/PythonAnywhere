@@ -50,6 +50,14 @@ def manage_schools():
     schools = db.session.query(School).order_by(School.nome).all()
     return render_template('super_admin/manage_schools.html', schools=schools)
 
+@super_admin_bp.route('/schools/delete/<int:school_id>', methods=['POST'])
+@login_required
+@super_admin_required
+def delete_school(school_id):
+    success, message = SchoolService.delete_school(school_id)
+    flash(message, 'success' if success else 'danger')
+    return redirect(url_for('super_admin.manage_schools'))
+
 @super_admin_bp.route('/assignments', methods=['GET', 'POST'])
 @login_required
 @super_admin_required

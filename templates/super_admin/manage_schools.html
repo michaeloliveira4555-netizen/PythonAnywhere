@@ -71,6 +71,7 @@
                             <th scope="col">Nome</th>
                             <th scope="col">Ativa</th>
                             <th scope="col">Criada em</th>
+                            <th scope="col">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -80,6 +81,12 @@
                             <td>{{ school.nome }}</td>
                             <td>{{ 'Sim' if school.is_active else 'Não' }}</td>
                             <td>{{ school.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('super_admin.delete_school', school_id=school.id) }}" onsubmit="return confirm('ATENÇÃO: Excluir esta escola irá remover permanentemente todos os seus dados (turmas, alunos, vínculos, etc.). Esta ação não pode ser desfeita. Deseja continuar?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+                                </form>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

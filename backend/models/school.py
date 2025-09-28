@@ -16,7 +16,8 @@ class School(db.Model):
     __tablename__ = 'schools'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    nome: Mapped[str] = mapped_column(db.String(150), nullable=False)
+    # GARANTE QUE O NOME DA ESCOLA SEJA ÚNICO
+    nome: Mapped[str] = mapped_column(db.String(150), nullable=False, unique=True)
     slug: Mapped[t.Optional[str]] = mapped_column(db.String(150), nullable=True, unique=True)
     is_active: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
