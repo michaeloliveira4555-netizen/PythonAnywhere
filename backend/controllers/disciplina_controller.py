@@ -9,6 +9,7 @@ from wtforms.validators import DataRequired, Length, NumberRange
 
 from ..models.database import db
 from ..models.disciplina import Disciplina
+from ..models.ciclo import Ciclo
 from ..services.disciplina_service import DisciplinaService
 from ..services.user_service import UserService
 from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required
@@ -18,7 +19,7 @@ disciplina_bp = Blueprint('disciplina', __name__, url_prefix='/disciplina')
 class DisciplinaForm(FlaskForm):
     materia = StringField('Matéria', validators=[DataRequired(), Length(min=3, max=100)])
     carga_horaria_prevista = IntegerField('Carga Horária Prevista', validators=[DataRequired(), NumberRange(min=1)])
-    ciclo = SelectField('Ciclo', coerce=int, choices=[(1, 'Ciclo 1'), (2, 'Ciclo 2'), (3, 'Ciclo 3')], validators=[DataRequired()])
+    ciclo_id = SelectField('Ciclo', coerce=int, validators=[DataRequired()])
     submit = SubmitField('Salvar')
 
 class DeleteForm(FlaskForm):
@@ -26,41 +27,37 @@ class DeleteForm(FlaskForm):
 
 @disciplina_bp.route('/')
 @login_required
-@admin_or_programmer_required # Super Admin PODE ver
+@admin_or_programmer_required
 def listar_disciplinas():
     school_id = UserService.get_current_school_id()
     if not school_id:
         flash('Nenhuma escola associada ou selecionada.', 'warning')
         return redirect(url_for('main.dashboard'))
         
-    ciclo_selecionado = request.args.get('ciclo', 1, type=int)
-    session['ultimo_ciclo_disciplina'] = ciclo_selecionado
+    ciclo_selecionado_id = request.args.get('ciclo', session.get('ultimo_ciclo_disciplina', 1), type=int)
+    session['ultimo_ciclo_disciplina'] = ciclo_selecionado_id
     
     query = select(Disciplina).where(
         Disciplina.school_id == school_id,
-        Disciplina.ciclo == ciclo_selecionado
+        Disciplina.ciclo_id == ciclo_selecionado_id
     ).order_by(Disciplina.materia)
 
     disciplinas = db.session.scalars(query).all()
-    form = DisciplinaForm()
     delete_form = DeleteForm()
     
     ciclos_disponiveis = db.session.scalars(
-        select(Disciplina.ciclo).where(Disciplina.school_id == school_id).distinct().order_by(Disciplina.ciclo)
+        select(Ciclo).order_by(Ciclo.id)
     ).all()
-    if not ciclos_disponiveis:
-        ciclos_disponiveis = [1, 2, 3]
 
     return render_template('listar_disciplinas.html', 
                            disciplinas=disciplinas, 
-                           form=form, 
                            delete_form=delete_form, 
-                           ciclo_selecionado=ciclo_selecionado,
+                           ciclo_selecionado=ciclo_selecionado_id,
                            ciclos=ciclos_disponiveis)
 
 @disciplina_bp.route('/adicionar', methods=['GET', 'POST'])
 @login_required
-@school_admin_or_programmer_required # Super Admin NÃO PODE adicionar
+@school_admin_or_programmer_required
 def adicionar_disciplina():
     school_id = UserService.get_current_school_id()
     if not school_id:
@@ -68,6 +65,8 @@ def adicionar_disciplina():
         return redirect(url_for('disciplina.listar_disciplinas'))
         
     form = DisciplinaForm()
+    ciclos = db.session.scalars(select(Ciclo).order_by(Ciclo.nome)).all()
+    form.ciclo_id.choices = [(c.id, c.nome) for c in ciclos]
     
     if form.validate_on_submit():
         success, message = DisciplinaService.create_disciplina(form.data, school_id)
@@ -84,7 +83,7 @@ def adicionar_disciplina():
 
 @disciplina_bp.route('/editar/<int:disciplina_id>', methods=['GET', 'POST'])
 @login_required
-@school_admin_or_programmer_required # Super Admin NÃO PODE editar
+@school_admin_or_programmer_required
 def editar_disciplina(disciplina_id):
     disciplina = db.session.get(Disciplina, disciplina_id)
     if not disciplina:
@@ -92,6 +91,9 @@ def editar_disciplina(disciplina_id):
         return redirect(url_for('disciplina.listar_disciplinas'))
 
     form = DisciplinaForm(obj=disciplina)
+    ciclos = db.session.scalars(select(Ciclo).order_by(Ciclo.nome)).all()
+    form.ciclo_id.choices = [(c.id, c.nome) for c in ciclos]
+    
     if form.validate_on_submit():
         success, message = DisciplinaService.update_disciplina(disciplina_id, form.data)
         flash(message, 'success' if success else 'danger')
@@ -101,7 +103,7 @@ def editar_disciplina(disciplina_id):
 
 @disciplina_bp.route('/excluir/<int:disciplina_id>', methods=['POST'])
 @login_required
-@school_admin_or_programmer_required # Super Admin NÃO PODE excluir
+@school_admin_or_programmer_required
 def excluir_disciplina(disciplina_id):
     form = DeleteForm()
     if form.validate_on_submit():
@@ -137,7 +139,7 @@ def api_disciplinas_por_ciclo(ciclo_id):
 
     disciplinas_query = (
         select(Disciplina)
-        .where(Disciplina.school_id == school_id, Disciplina.ciclo == ciclo_id)
+        .where(Disciplina.school_id == school_id, Disciplina.ciclo_id == ciclo_id)
         .order_by(Disciplina.materia)
     )
     disciplinas = db.session.scalars(disciplinas_query).all()

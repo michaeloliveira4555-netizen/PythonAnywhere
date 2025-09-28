@@ -11,10 +11,10 @@
 <div class="ciclo-selector">
     <strong>Ciclo:</strong>
     <div class="filter-buttons">
-        {% for ciclo_num in ciclos %}
-        <a href="{{ url_for('disciplina.listar_disciplinas', ciclo=ciclo_num) }}" 
-           class="btn btn-sm {% if ciclo_selecionado == ciclo_num %}btn-warning{% else %}btn-secondary{% endif %}">
-            Ciclo {{ ciclo_num }}
+        {% for ciclo in ciclos %}
+        <a href="{{ url_for('disciplina.listar_disciplinas', ciclo=ciclo.id) }}" 
+           class="btn btn-sm {% if ciclo_selecionado == ciclo.id %}btn-warning{% else %}btn-secondary{% endif %}">
+            {{ ciclo.nome }}
         </a>
         {% endfor %}
     </div>
@@ -23,33 +23,14 @@
 <div class="table-container">
     <div class="table-header">
         <h3>
-
-            {% if pelotao_filtrado %}
-                Instrutores do {{ pelotao_filtrado }} - Ciclo {{ ciclo_selecionado }}
-            {% else %}
-                Disciplinas do Ciclo {{ ciclo_selecionado }}
-            {% endif %}
+            {% set ciclo_atual = ciclos|selectattr('id', 'equalto', ciclo_selecionado)|first %}
+            Disciplinas do {{ ciclo_atual.nome if ciclo_atual else 'Ciclo ' + ciclo_selecionado|string }}
         </h3>
         {% if current_user.role in ['programador', 'admin_escola'] %}
         <a href="{{ url_for('disciplina.adicionar_disciplina') }}" class="btn btn-primary">
             <span>+</span> Adicionar Nova Disciplina
         </a>
         {% endif %}
-    </div>
-
-    <div class="table-filters">
-        <strong>Visualizar Pelotão:</strong>
-        <div class="filter-buttons">
-            {% for i in range(1, 9) %}
-            <a href="{{ url_for('disciplina.listar_disciplinas', pelotao=i ~ '° Pelotão', ciclo=ciclo_selecionado) }}" 
-               class="btn btn-sm {% if pelotao_filtrado and pelotao_filtrado == i ~ '° Pelotão' %}btn-primary{% else %}btn-secondary{% endif %}">
-                {{ i }}º Pelotão
-            </a>
-            {% endfor %}
-            {% if pelotao_filtrado %}
-            <a href="{{ url_for('disciplina.listar_disciplinas', ciclo=ciclo_selecionado) }}" class="btn btn-sm btn-danger">Limpar Filtro</a>
-            {% endif %}
-        </div>
     </div>
 
     <div class="table-responsive">
@@ -59,9 +40,6 @@
                     <tr>
                         <th>Matéria</th>
                         <th>Carga Horária</th>
-                        {% if pelotao_filtrado %}
-                        <th>Instrutor(es) ({{ pelotao_filtrado }})</th>
-                        {% endif %}
                         <th class="text-right">Ações</th>
                     </tr>
                 </thead>
@@ -70,19 +48,6 @@
                     <tr>
                         <td data-label="Matéria">{{ disciplina.materia }}</td>
                         <td data-label="Carga Horária">{{ disciplina.carga_horaria_prevista if disciplina.carga_horaria_prevista > 0 else 'N/D' }}h</td>
-                        {% if pelotao_filtrado %}
-                        <td data-label="Instrutor(es)">
-                            {% set associacao = disciplina.associacoes_turmas|selectattr('pelotao', 'equalto', pelotao_filtrado)|first %}
-                            {% if associacao and associacao.instrutor_1 %}
-                                <div>{{ associacao.instrutor_1.user.nome_completo or associacao.instrutor_1.user.username }}</div>
-                                {% if associacao.instrutor_2 %}
-                                    <div style="color: #6c757d;">{{ associacao.instrutor_2.user.nome_completo or associacao.instrutor_2.user.username }}</div>
-                                {% endif %}
-                            {% else %}
-                                <span style="color: #aaa;">Não atribuído</span>
-                            {% endif %}
-                        </td>
-                        {% endif %}
                         <td data-label="Ações" class="text-right">
                             <div class="btn-group">
                                 {% if current_user.role in ['programador', 'admin_escola'] %}
@@ -104,7 +69,7 @@
             <div class="empty-state">
                 <div class="empty-icon">📚</div>
                 <h2>Nenhuma Disciplina Cadastrada</h2>
-                <p>Nenhuma disciplina foi encontrada para o Ciclo {{ ciclo_selecionado }}.</p>
+                <p>Nenhuma disciplina foi encontrada para o ciclo selecionado.</p>
             </div>
         {% endif %}
     </div>

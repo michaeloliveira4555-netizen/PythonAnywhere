@@ -11,6 +11,7 @@ from ..models.disciplina_turma import DisciplinaTurma
 from ..models.historico_disciplina import HistoricoDisciplina
 from ..models.aluno import Aluno
 from ..models.turma import Turma
+from ..models.ciclo import Ciclo
 
 class DisciplinaService:
     @staticmethod
@@ -18,10 +19,10 @@ class DisciplinaService:
         """Cria uma nova disciplina e a associa a todos os alunos da escola."""
         materia = data.get('materia')
         carga_horaria = data.get('carga_horaria_prevista')
-        ciclo = data.get('ciclo', 1)
+        ciclo_id = data.get('ciclo_id')
 
-        if not materia or not carga_horaria:
-            return False, 'Matéria e Carga Horária são obrigatórias.'
+        if not materia or not carga_horaria or not ciclo_id:
+            return False, 'Matéria, Carga Horária e Ciclo são obrigatórios.'
 
         if db.session.execute(select(Disciplina).where(Disciplina.materia == materia, Disciplina.school_id == school_id)).scalar_one_or_none():
             return False, f'A disciplina "{materia}" já existe nesta escola.'
@@ -30,13 +31,12 @@ class DisciplinaService:
             nova_disciplina = Disciplina(
                 materia=materia,
                 carga_horaria_prevista=int(carga_horaria),
-                ciclo=int(ciclo),
+                ciclo_id=int(ciclo_id),
                 school_id=school_id
             )
             db.session.add(nova_disciplina)
-            db.session.flush()  # Garante que a nova_disciplina.id esteja disponível
+            db.session.flush()
 
-            # Associa a nova disciplina a todos os alunos da escola
             alunos_da_escola = db.session.scalars(
                 select(Aluno).join(Turma).where(Turma.school_id == school_id)
             ).all()
@@ -65,7 +65,7 @@ class DisciplinaService:
         try:
             disciplina.materia = data.get('materia', disciplina.materia)
             disciplina.carga_horaria_prevista = int(data.get('carga_horaria_prevista', disciplina.carga_horaria_prevista))
-            disciplina.ciclo = int(data.get('ciclo', disciplina.ciclo))
+            disciplina.ciclo_id = int(data.get('ciclo_id', disciplina.ciclo_id))
             db.session.commit()
             return True, 'Disciplina atualizada com sucesso!'
         except (ValueError, TypeError):
@@ -84,12 +84,8 @@ class DisciplinaService:
             return False, 'Disciplina não encontrada.'
 
         try:
-            # Exclui todos os registros de histórico associados a esta disciplina
             db.session.query(HistoricoDisciplina).filter_by(disciplina_id=disciplina_id).delete()
-            
-            # Exclui todos os vínculos de turma associados a esta disciplina
             db.session.query(DisciplinaTurma).filter_by(disciplina_id=disciplina_id).delete()
-
             db.session.delete(disciplina)
             db.session.commit()
             return True, 'Disciplina e todos os seus registros associados foram excluídos com sucesso!'
@@ -102,18 +98,18 @@ class DisciplinaService:
     def get_disciplinas_agrupadas_por_ciclo(school_id: int):
         """
         Busca todas as disciplinas de uma escola e as agrupa por ciclo.
-        Retorna um dicionário onde as chaves são os números dos ciclos.
+        Retorna um dicionário onde as chaves são os nomes dos ciclos.
         """
         disciplinas_query = (
             select(Disciplina)
             .where(Disciplina.school_id == school_id)
-            .order_by(Disciplina.ciclo, Disciplina.materia)
+            .order_by(Disciplina.ciclo_id, Disciplina.materia)
         )
         disciplinas = db.session.scalars(disciplinas_query).all()
         
-        # Agrupa as disciplinas em um dicionário
         disciplinas_agrupadas = defaultdict(list)
         for disciplina in disciplinas:
-            disciplinas_agrupadas[disciplina.ciclo].append(disciplina)
+            if disciplina.ciclo:
+                disciplinas_agrupadas[disciplina.ciclo.nome].append(disciplina)
             
         return dict(sorted(disciplinas_agrupadas.items()))

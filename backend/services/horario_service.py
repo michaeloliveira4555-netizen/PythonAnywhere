@@ -14,6 +14,7 @@ from ..models.disciplina_turma import DisciplinaTurma
 from ..models.semana import Semana
 from ..models.turma import Turma
 from ..models.user import User
+from ..models.ciclo import Ciclo
 
 
 class HorarioService:
@@ -59,7 +60,7 @@ class HorarioService:
                         'duracao': aula.duracao,
                         'status': aula.status,
                         'is_disposicao': False,
-                        'can_edit': HorarioService.can_edit_horario(aula, user), # Usa o user passado como parâmetro
+                        'can_edit': HorarioService.can_edit_horario(aula, user),
                     }
                     horario_matrix[periodo_idx][dia_idx] = aula_info
                     for i in range(1, aula.duracao):
@@ -70,15 +71,16 @@ class HorarioService:
         return horario_matrix
 
     @staticmethod
-    def get_semana_selecionada(semana_id_str, ciclo):
+    def get_semana_selecionada(semana_id_str, ciclo_id):
         """Determina qual semana deve ser exibida, com base na seleção ou na data atual."""
         if semana_id_str and semana_id_str.isdigit():
             return db.session.get(Semana, int(semana_id_str))
         
         today = date.today()
+        # CORREÇÃO APLICADA: Usa-se ciclo_id em vez de ciclo
         semana_atual = db.session.scalars(
             select(Semana).where(
-                Semana.ciclo == ciclo,
+                Semana.ciclo_id == ciclo_id,
                 Semana.data_inicio <= today,
                 Semana.data_fim >= today
             )
@@ -87,7 +89,7 @@ class HorarioService:
             return semana_atual
             
         return db.session.scalars(
-            select(Semana).where(Semana.ciclo == ciclo).order_by(Semana.data_inicio.desc())
+            select(Semana).where(Semana.ciclo_id == ciclo_id).order_by(Semana.data_inicio.desc())
         ).first()
 
     @staticmethod
@@ -111,21 +113,22 @@ class HorarioService:
         
         disciplinas_disponiveis = []
         if is_admin:
-            disciplinas_do_ciclo = db.session.scalars(select(Disciplina).where(Disciplina.ciclo == ciclo_id).order_by(Disciplina.materia)).all()
+            # CORREÇÃO APLICADA: Filtra por ciclo_id
+            disciplinas_do_ciclo = db.session.scalars(select(Disciplina).where(Disciplina.ciclo_id == ciclo_id).order_by(Disciplina.materia)).all()
             for d in disciplinas_do_ciclo:
                 disciplinas_disponiveis.append({"id": d.id, "nome": d.materia})
         else:
             instrutor_id = user.instrutor_profile.id if user.instrutor_profile else 0
             associacoes = db.session.scalars(
-                select(DisciplinaTurma).options(joinedload(DisciplinaTurma.disciplina_associada))
+                select(DisciplinaTurma).options(joinedload(DisciplinaTurma.disciplina))
                 .join(Disciplina).where(
                     DisciplinaTurma.pelotao == pelotao,
-                    Disciplina.ciclo == ciclo_id,
+                    Disciplina.ciclo_id == ciclo_id,
                     (DisciplinaTurma.instrutor_id_1 == instrutor_id) | (DisciplinaTurma.instrutor_id_2 == instrutor_id)
                 )
             ).unique().all()
             for a in associacoes:
-                disciplinas_disponiveis.append({"id": a.disciplina_associada.id, "nome": a.disciplina_associada.materia})
+                disciplinas_disponiveis.append({"id": a.disciplina.id, "nome": a.disciplina.materia})
 
         todos_instrutores = [{"id": i.id, "nome": i.user.nome_de_guerra or i.user.username} for i in db.session.scalars(select(Instrutor).options(joinedload(Instrutor.user)).join(User).order_by(User.nome_de_guerra)).all()]
 

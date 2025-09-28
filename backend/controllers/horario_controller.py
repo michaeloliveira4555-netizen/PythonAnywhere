@@ -15,6 +15,7 @@ from ..models.instrutor import Instrutor
 from ..models.disciplina_turma import DisciplinaTurma
 from ..models.semana import Semana
 from ..models.turma import Turma
+from ..models.ciclo import Ciclo
 from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required
 from ..services.horario_service import HorarioService
 from ..services.user_service import UserService
@@ -53,19 +54,23 @@ def index():
              flash("Turma selecionada inválida.", "danger")
              turma_selecionada_nome = todas_as_turmas[0].nome if todas_as_turmas else None
 
-    ciclo_selecionado = request.args.get('ciclo', session.get('ultimo_ciclo_horario', 1), type=int)
-    session['ultimo_ciclo_horario'] = ciclo_selecionado
+    ciclo_selecionado_id = request.args.get('ciclo', session.get('ultimo_ciclo_horario', 1), type=int)
+    session['ultimo_ciclo_horario'] = ciclo_selecionado_id
+    
+    ciclos = db.session.scalars(select(Ciclo).order_by(Ciclo.id)).all()
     
     todas_as_semanas = []
     if school_id:
-        todas_as_semanas = db.session.scalars(select(Semana).where(Semana.ciclo == ciclo_selecionado).order_by(Semana.data_inicio.desc())).all()
+        # CORREÇÃO APLICADA: Usa-se ciclo_id em vez de ciclo
+        todas_as_semanas = db.session.scalars(select(Semana).where(Semana.ciclo_id == ciclo_selecionado_id).order_by(Semana.data_inicio.desc())).all()
     
     semana_id = request.args.get('semana_id')
-    semana_selecionada = HorarioService.get_semana_selecionada(semana_id, ciclo_selecionado)
+    semana_selecionada = HorarioService.get_semana_selecionada(semana_id, ciclo_selecionado_id)
     
     horario_matrix = None
     datas_semana = {}
     if turma_selecionada_nome and semana_selecionada:
+        session['ultima_turma_visualizada'] = turma_selecionada_nome
         horario_matrix = HorarioService.construir_matriz_horario(turma_selecionada_nome, semana_selecionada.id, current_user)
         datas_semana = HorarioService.get_datas_da_semana(semana_selecionada)
 
@@ -75,19 +80,21 @@ def index():
                            semana_selecionada=semana_selecionada,
                            todas_as_turmas=todas_as_turmas,
                            todas_as_semanas=todas_as_semanas,
-                           ciclos=[1, 2, 3],
-                           ciclo_selecionado=ciclo_selecionado,
+                           ciclos=ciclos,
+                           ciclo_selecionado=ciclo_selecionado_id,
                            datas_semana=datas_semana)
+
 
 @horario_bp.route('/editar/<pelotao>/<int:semana_id>/<int:ciclo_id>')
 @login_required
-@school_admin_or_programmer_required # <-- CORREÇÃO APLICADA
+@school_admin_or_programmer_required
 def editar_horario_grid(pelotao, semana_id, ciclo_id):
     semana = db.session.get(Semana, semana_id)
     if not semana:
         flash("Semana não encontrada.", "danger")
         return redirect(url_for('horario.index'))
 
+    # CORREÇÃO: Passa o ID do ciclo corretamente para o serviço
     context_data = HorarioService.get_edit_grid_context(pelotao, semana_id, ciclo_id, current_user)
     
     if not context_data.get('success'):
@@ -96,14 +103,16 @@ def editar_horario_grid(pelotao, semana_id, ciclo_id):
 
     return render_template('editar_quadro_horario.html', **context_data)
 
+
 @horario_bp.route('/get-aula/<int:horario_id>')
 @login_required
 def get_aula_details(horario_id):
-    aula = HorarioService.get_aula_details(horario_id, current_user)
-    if not aula:
+    aula_details = HorarioService.get_aula_details(horario_id, current_user)
+    if not aula_details:
         return jsonify({'success': False, 'message': 'Aula não encontrada ou acesso negado.'}), 404
     
-    return jsonify({'success': True, 'data': aula})
+    return jsonify({'success': True, **aula_details})
+
 
 @horario_bp.route('/salvar-aula', methods=['POST'])
 @login_required
@@ -126,7 +135,7 @@ def remover_aula():
 
 @horario_bp.route('/aprovar', methods=['GET', 'POST'])
 @login_required
-@school_admin_or_programmer_required # <-- CORREÇÃO APLICADA
+@school_admin_or_programmer_required
 def aprovar_horarios():
     form = AprovarHorarioForm()
     if form.validate_on_submit():
