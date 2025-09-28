@@ -38,7 +38,7 @@ def dashboard():
     school_id_to_load = None
     if current_user.role in ['super_admin', 'programador']:
         school_id_to_load = session.get('view_as_school_id')
-    elif current_user.schools:
+    elif hasattr(current_user, 'schools') and current_user.schools:
         school_id_to_load = current_user.schools[0].id
     
     dashboard_data = DashboardService.get_dashboard_data(school_id=school_id_to_load)
@@ -62,30 +62,36 @@ def pre_cadastro():
     role_arg = request.args.get('role')
 
     if request.method == 'POST':
+        # CORREÇÃO: Obter o ID da escola do usuário logado
+        school_id = UserService.get_current_school_id()
+        if not school_id:
+            flash("Não foi possível identificar a escola do administrador. Ação cancelada.", "danger")
+            return redirect(url_for('main.pre_cadastro', role=role_arg))
+
         form_data = request.form.to_dict()
         if role_arg and not form_data.get('role'):
             form_data['role'] = role_arg
 
-        # CORRIGIDO: de id_funcs_raw para matriculas_raw
         matriculas_raw = form_data.get('matriculas', '').strip() 
         if '/' in matriculas_raw or ' ' in matriculas_raw or ',' in matriculas_raw or ';' in matriculas_raw:
             partes = [p.strip() for p in matriculas_raw.replace(',', ' ').replace(';', ' ').split() if p.strip()]
-            ids_numericos = [p for p in partes if p.isdigit()]
+            matriculas = [p for p in partes if p.isdigit()]
 
             if not form_data.get('role'):
                 flash('Função não informada para pré-cadastro em lote.', 'danger')
                 return redirect(url_for('main.pre_cadastro', role=role_arg) if role_arg else url_for('main.pre_cadastro'))
 
-            success, novos, existentes = UserService.batch_pre_register_users(ids_numericos, form_data['role'])
+            # CORREÇÃO: Passar o school_id para a função
+            success, novos, existentes = UserService.batch_pre_register_users(matriculas, form_data['role'], school_id)
             if success:
                 flash(f'Pré-cadastro realizado: {novos} novo(s), {existentes} já existente(s).', 'success')
             else:
                 flash('Falha ao pré-cadastrar usuários em lote.', 'danger')
             return redirect(url_for('main.pre_cadastro', role=role_arg) if role_arg else url_for('main.pre_cadastro'))
         else:
-            # CORRIGIDO: de id_func para matricula
             form_data['matricula'] = matriculas_raw
-            success, message = UserService.pre_register_user(form_data)
+            # CORREÇÃO: Passar o school_id para a função
+            success, message = UserService.pre_register_user(form_data, school_id)
             if success:
                 flash(message, 'success')
             else:

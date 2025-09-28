@@ -11,6 +11,10 @@ from wtforms.widgets import CheckboxInput, ListWidget
 from ..models.database import db
 from ..models.turma import Turma
 from ..models.aluno import Aluno
+# --- CORREÇÃO ADICIONADA AQUI ---
+from ..models.user import User 
+from ..models.user_school import UserSchool
+# --- FIM DA CORREÇÃO ---
 from ..services.turma_service import TurmaService
 from ..services.user_service import UserService 
 from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required

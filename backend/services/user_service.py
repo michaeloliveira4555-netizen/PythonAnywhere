@@ -17,12 +17,15 @@ from ..services.asset_service import AssetService
 class UserService:
     
     @staticmethod
-    def pre_register_user(data):
+    def pre_register_user(data, school_id):
         matricula = data.get('matricula')
         role = data.get('role')
 
         if not matricula or not role:
             return False, "Matrícula e Função são obrigatórios."
+
+        if not school_id:
+            return False, "A escola é obrigatória para o pré-cadastro."
 
         if db.session.execute(select(User).filter_by(matricula=matricula)).scalar_one_or_none():
             return False, f"O usuário com Matrícula '{matricula}' já existe."
@@ -30,6 +33,8 @@ class UserService:
         try:
             new_user = User(matricula=matricula, role=role, is_active=False)
             db.session.add(new_user)
+            db.session.flush()
+            db.session.add(UserSchool(user_id=new_user.id, school_id=school_id, role=role))
             db.session.commit()
             return True, f"Usuário {matricula} pré-cadastrado com sucesso como {role}."
         except Exception as e:
@@ -83,7 +88,6 @@ class UserService:
         if not user or not school:
             return False, "Usuário ou escola não encontrados."
 
-        # PROTEÇÃO ADICIONADA: Impede a alteração de funções de utilizadores essenciais
         if user.username in ['super_admin', 'programador']:
             return False, f"Não é permitido alterar a função ou vincular o usuário '{user.username}' a uma escola."
 
@@ -111,7 +115,6 @@ class UserService:
         if not user_id or not school_id:
             return False, "ID do usuário e ID da escola são obrigatórios."
         
-        # PROTEÇÃO ADICIONADA: Impede a desvinculação de utilizadores essenciais
         user = db.session.get(User, user_id)
         if user and user.username in ['super_admin', 'programador']:
             return False, f"Não é permitido remover o vínculo escolar do usuário '{user.username}'."
@@ -133,8 +136,10 @@ class UserService:
             return None
 
         if current_user.role in ['super_admin', 'programador']:
-            return session.get('view_as_school_id')
-        
+            school_id_from_session = session.get('view_as_school_id')
+            if school_id_from_session:
+                return school_id_from_session
+
         user_school = db.session.scalar(
             select(UserSchool).filter_by(user_id=current_user.id)
         )

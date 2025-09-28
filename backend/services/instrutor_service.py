@@ -28,18 +28,16 @@ class InstrutorService:
 
     @staticmethod
     def create_full_instrutor(data, school_id):
-        """Cria (ou reaproveita) um usuário e o perfil Instrutor, vinculando à escola."""
+        """Cria um usuário e o perfil de Instrutor, vinculando-o à escola."""
         try:
             matricula = (data.get('matricula') or '').strip()
             email = (data.get('email') or '').strip()
             password = (data.get('password') or '').strip()
             nome_completo = (data.get('nome_completo') or '').strip()
             nome_de_guerra = (data.get('nome_de_guerra') or '').strip()
-
             posto_sel = (data.get('posto_graduacao_select') or '').strip()
             posto_outro = (data.get('posto_graduacao_outro') or '').strip()
             posto = posto_outro if (posto_sel == 'Outro' and posto_outro) else (posto_sel or None)
-
             telefone = (data.get('telefone') or '').strip() or None
             is_rr = str(data.get('is_rr') or '').lower() in ('sim', 'true', '1', 'on')
 
@@ -47,6 +45,8 @@ class InstrutorService:
                 return False, "O campo Matrícula é obrigatório."
             if not email:
                 return False, "O campo E-mail é obrigatório."
+            if not password:
+                return False, "O campo Senha é obrigatório."
 
             # VERIFICAÇÕES PRÉVIAS PARA ERROS CLAROS
             if db.session.scalar(select(User).where(User.matricula == matricula)):
@@ -54,10 +54,7 @@ class InstrutorService:
             if db.session.scalar(select(User).where(User.email == email)):
                 return False, f"O e-mail '{email}' já está em uso por outro usuário."
 
-            # LÓGICA DE CRIAÇÃO SIMPLIFICADA E CORRIGIDA
-            if not password:
-                return False, "Senha é obrigatória para criar um novo usuário."
-            
+            # CRIAÇÃO DO USUÁRIO
             user = User(
                 email=email,
                 username=email,
@@ -70,11 +67,9 @@ class InstrutorService:
             db.session.add(user)
             db.session.flush()
 
+            # CRIAÇÃO DO PERFIL DE INSTRUTOR (sem os campos removidos)
             instrutor = Instrutor(
                 user_id=user.id,
-                especializacao='',
-                formacao=None,
-                credor=None,
                 posto_graduacao=posto,
                 telefone=telefone,
                 is_rr=is_rr
@@ -96,7 +91,7 @@ class InstrutorService:
             db.session.rollback()
             current_app.logger.exception("Erro geral ao criar instrutor")
             return False, f"Ocorreu um erro inesperado ao criar o instrutor."
-
+    
     @staticmethod
     def get_instrutor_by_id(instrutor_id: int):
         return db.session.get(Instrutor, instrutor_id)

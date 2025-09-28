@@ -1,4 +1,3 @@
-
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
@@ -32,9 +31,9 @@ class DeleteForm(FlaskForm):
 class CadastroInstrutorForm(FlaskForm):
     nome_completo = StringField('Nome completo', validators=[Optional(), Length(max=255)])
     nome_de_guerra = StringField('Nome de guerra', validators=[Optional(), Length(max=255)])
-    matricula = StringField('Matrícula', validators=[Optional(), Length(max=64)])
+    matricula = StringField('Matrícula', validators=[DataRequired(), Length(max=64)])
     email = StringField('E-mail', validators=[DataRequired(), Email()])
-    password = PasswordField('Senha', validators=[Optional(), Length(min=4)])
+    password = PasswordField('Senha', validators=[DataRequired(), Length(min=4)])
     posto_graduacao_select = SelectField('Posto/Graduação', choices=POSTOS_CHOICES)
     posto_graduacao_outro = StringField('Outro (especifique)', validators=[Optional(), Length(max=100)])
     telefone = StringField('Telefone', validators=[Optional(), Length(max=30)])
@@ -119,17 +118,20 @@ def editar_instrutor(instrutor_id: int):
 @instrutor_bp.route('/completar', methods=['GET', 'POST'])
 @login_required
 def completar_cadastro():
-    form = CadastroInstrutorForm()
+    form = EditarInstrutorForm()
     if request.method == 'POST' and form.validate_on_submit():
-        school_id = _ensure_school_id_for_current_user('instrutor')
-        data = request.form.to_dict(flat=True)
-        data['email'] = current_user.email
-        data['password'] = ''
-        ok, msg = InstrutorService.create_full_instrutor(data, school_id)
+        instrutor_profile = current_user.instrutor_profile
+        if not instrutor_profile:
+            flash("Perfil de instrutor não encontrado para completar.", "danger")
+            return redirect(url_for('main.dashboard'))
+        
+        ok, msg = InstrutorService.update_instrutor(instrutor_profile.id, request.form.to_dict(flat=True))
         flash(msg, 'success' if ok else 'danger')
         if ok:
-            return redirect(url_for('instrutor.listar_instrutores'))
-    return render_template('cadastro_instrutor.html', form=form)
+            return redirect(url_for('main.dashboard'))
+            
+    return render_template('completar_cadastro_instrutor.html', form=form)
+
 
 @instrutor_bp.route('/excluir/<int:instrutor_id>', methods=['POST'])
 @login_required
