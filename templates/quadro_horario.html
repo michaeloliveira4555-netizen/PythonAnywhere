@@ -23,10 +23,10 @@
     <div class="ciclo-selector">
         <strong>Ciclo:</strong>
         <div class="filter-buttons">
-            {% for ciclo_num in ciclos %}
-            <a href="{{ url_for('horario.index', ciclo=ciclo_num, pelotao=pelotao_selecionado, semana_id=semana_selecionada.id if semana_selecionada else '') }}" 
-               class="btn btn-sm {% if ciclo_selecionado == ciclo_num %}btn-warning{% else %}btn-secondary{% endif %}">
-                Ciclo {{ ciclo_num }}
+            {% for ciclo in ciclos %}
+            <a href="{{ url_for('horario.index', ciclo=ciclo.id, pelotao=pelotao_selecionado, semana_id=semana_selecionada.id if semana_selecionada else '') }}"
+               class="btn btn-sm {% if ciclo_selecionado == ciclo.id %}btn-warning{% else %}btn-secondary{% endif %}">
+                {{ ciclo.nome }}
             </a>
             {% endfor %}
         </div>
