@@ -6,13 +6,12 @@ from sqlalchemy import select
 from datetime import datetime, timedelta
 import re
 from flask_wtf import FlaskForm
-from wtforms import StringField, DateField, SubmitField, SelectField
-from wtforms.validators import DataRequired
+from wtforms import StringField, DateField, SubmitField, SelectField, BooleanField, IntegerField
+from wtforms.validators import DataRequired, Optional
 
 from ..models.database import db
 from ..models.semana import Semana
 from ..models.horario import Horario
-# Importa o novo modelo
 from ..models.ciclo import Ciclo
 from utils.decorators import admin_or_programmer_required
 from ..services.semana_service import SemanaService
@@ -47,7 +46,8 @@ def gerenciar_semanas():
         ).all()
     
     add_form = AddSemanaForm()
-    add_form.ciclo_id.choices = [(c.id, c.nome) for c in todos_os_ciclos]
+    if todos_os_ciclos:
+        add_form.ciclo_id.choices = [(c.id, c.nome) for c in todos_os_ciclos]
     
     delete_form = DeleteForm()
     
@@ -58,10 +58,72 @@ def gerenciar_semanas():
                            add_form=add_form,
                            delete_form=delete_form)
 
-# ... (o resto das funções, como adicionar_semana, editar_semana, etc. continuam iguais,
-# mas precisam de ser ajustadas para usar ciclo_id em vez de ciclo)
+@semana_bp.route('/adicionar', methods=['POST'])
+@login_required
+@admin_or_programmer_required
+def adicionar_semana():
+    form = AddSemanaForm()
+    ciclos = db.session.scalars(select(Ciclo).order_by(Ciclo.nome)).all()
+    form.ciclo_id.choices = [(c.id, c.nome) for c in ciclos]
 
-# Rota para Adicionar Ciclo
+    if form.validate_on_submit():
+        success, message = SemanaService.add_semana(
+            nome=form.nome.data,
+            data_inicio_str=form.data_inicio.data.strftime('%Y-%m-%d'),
+            data_fim_str=form.data_fim.data.strftime('%Y-%m-%d'),
+            ciclo_id=form.ciclo_id.data
+        )
+        flash(message, 'success' if success else 'danger')
+    else:
+        flash('Erro no formulário. Verifique os dados inseridos.', 'danger')
+        
+    return redirect(url_for('semana.gerenciar_semanas', ciclo_id=form.ciclo_id.data))
+
+
+@semana_bp.route('/editar/<int:semana_id>', methods=['GET', 'POST'])
+@login_required
+@admin_or_programmer_required
+def editar_semana(semana_id):
+    semana = db.session.get(Semana, semana_id)
+    if not semana:
+        flash("Semana não encontrada.", "danger")
+        return redirect(url_for('semana.gerenciar_semanas'))
+
+    if request.method == 'POST':
+        semana.nome = request.form['nome']
+        semana.data_inicio = datetime.strptime(request.form['data_inicio'], '%Y-%m-%d').date()
+        semana.data_fim = datetime.strptime(request.form['data_fim'], '%Y-%m-%d').date()
+        semana.mostrar_periodo_13 = 'mostrar_periodo_13' in request.form
+        semana.mostrar_periodo_14 = 'mostrar_periodo_14' in request.form
+        semana.mostrar_periodo_15 = 'mostrar_periodo_15' in request.form
+        semana.mostrar_sabado = 'mostrar_sabado' in request.form
+        semana.periodos_sabado = int(request.form.get('periodos_sabado') or 0)
+        semana.mostrar_domingo = 'mostrar_domingo' in request.form
+        semana.periodos_domingo = int(request.form.get('periodos_domingo') or 0)
+        
+        db.session.commit()
+        flash('Semana atualizada com sucesso!', 'success')
+        return redirect(url_for('semana.gerenciar_semanas', ciclo_id=semana.ciclo_id))
+
+    return render_template('editar_semana.html', semana=semana)
+
+
+@semana_bp.route('/deletar/<int:semana_id>', methods=['POST'])
+@login_required
+@admin_or_programmer_required
+def deletar_semana(semana_id):
+    form = DeleteForm()
+    if form.validate_on_submit():
+        semana = db.session.get(Semana, semana_id)
+        if semana:
+            ciclo_id = semana.ciclo_id
+            success, message = SemanaService.delete_semana(semana_id)
+            flash(message, 'success' if success else 'danger')
+            return redirect(url_for('semana.gerenciar_semanas', ciclo_id=ciclo_id))
+    flash('Ocorreu um erro ao tentar deletar a semana.', 'danger')
+    return redirect(url_for('semana.gerenciar_semanas'))
+
+
 @semana_bp.route('/ciclo/adicionar', methods=['POST'])
 @login_required
 @admin_or_programmer_required
@@ -79,7 +141,6 @@ def adicionar_ciclo():
     return redirect(url_for('semana.gerenciar_semanas'))
 
 
-# Rota para Deletar Ciclo
 @semana_bp.route('/ciclo/deletar/<int:ciclo_id>', methods=['POST'])
 @login_required
 @admin_or_programmer_required
