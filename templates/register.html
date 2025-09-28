@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Ativar Conta - Sistema EsFAS{% endblock %}
+
+{% block navbar_content %}{% endblock %}
+
+{% block content %}
+<div class="auth-page-container">
+    <div class="auth-card" style="max-width: 450px;">
+        <div class="card-logo-container">
+            <img src="{{ url_for('static', filename='img/brasao.png') }}" alt="Brasão da Escola">
+        </div>
+        <h2>Ativar sua Conta</h2>
+        <p style="font-size: 0.9rem; opacity: 0.8; margin-top: -15px; margin-bottom: 20px;">Complete seus dados para ativar seu acesso.</p>
+
+        <form method="POST" action="{{ url_for('auth.register') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label for="role">Eu sou:</label>
+                <select id="role" name="role" class="form-control" required>
+                    <option value="aluno">Aluno</option>
+                    <option value="instrutor">Instrutor</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="id_func">Sua Identidade Funcional (Id Func):</label>
+                <input type="text" id="id_func" name="id_func" class="form-control"
+                       pattern="[0-9]*" inputmode="numeric"
+                       placeholder="Digite sua Id Func (apenas números)"
+                       value="{{ form_data.get('id_func', '') }}" required>
+            </div>
+            <div class="form-group">
+                <label for="nome_completo">Seu Nome Completo:</label>
+                <input type="text" id="nome_completo" name="nome_completo" class="form-control"
+                       placeholder="Digite seu nome completo"
+                       value="{{ form_data.get('nome_completo', '') }}" required>
+            </div>
+            <div class="form-group">
+                <label for="nome_de_guerra">Seu Nome de Guerra:</label>
+                <input type="text" id="nome_de_guerra" name="nome_de_guerra" class="form-control"
+                       placeholder="Digite seu nome de guerra"
+                       value="{{ form_data.get('nome_de_guerra', '') }}" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Seu E-mail (Ex: nome.sobrenome@bm.rs.gov.br):</label>
+                <input type="email" id="email" name="email" class="form-control" placeholder="Digite seu e-mail completo" value="{{ form_data.get('email', '') }}" required>
+            </div>
+            <div class="form-group">
+                <label for="password_visible">Crie uma Senha:</label>
+                <input type="password" id="password_visible" name="new_password" class="form-control" autocomplete="new-password" required>
+                <input type="hidden" id="password" name="password">
+            </div>
+            <div class="password-rules">
+                <small>A senha deve conter pelo menos 8 caracteres, incluindo uma letra maiúscula, uma minúscula, um número e um caractere especial (!@#$%).</small>
+            </div>
+            <div class="form-group">
+                <label for="password2_visible">Confirme a Senha:</label>
+                <input type="password" id="password2_visible" name="new_password2" class="form-control" autocomplete="new-password" required>
+                <input type="hidden" id="password2" name="password2">
+            </div>
+            <button type="submit" class="btn btn-primary">Ativar Conta</button>
+        </form>
+        <script>
+        (function() {
+            const form = document.querySelector('form[action="{{ url_for('auth.register') }}"]');
+            if (!form) return;
+            const vis1 = document.getElementById('password_visible');
+            const vis2 = document.getElementById('password2_visible');
+            const hid1 = document.getElementById('password');
+            const hid2 = document.getElementById('password2');
+            function sync() {
+                if (vis1 && hid1) hid1.value = vis1.value;
+                if (vis2 && hid2) hid2.value = vis2.value;
+            }
+            ['input','change','blur'].forEach(evt => {
+                if (vis1) vis1.addEventListener(evt, sync);
+                if (vis2) vis2.addEventListener(evt, sync);
+            });
+            form.addEventListener('submit', sync);
+        })();
+        </script>
+         <div class="auth-link" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+            <a href="{{ url_for('auth.login') }}">Já tem uma conta ativa? Faça o login.</a>
+            <a href="{{ url_for('auth.login') }}">Voltar para o Login</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

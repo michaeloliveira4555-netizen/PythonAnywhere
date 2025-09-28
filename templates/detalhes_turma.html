@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes da Turma - {{ turma.nome }}{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1>{{ turma.nome }}</h1>
+    <p>Visualize os alunos e os cargos desta turma.</p>
+</div>
+
+<div class="turma-details-grid">
+    <div class="details-section">
+        <div class="section-header">
+            <h3>Alunos na Turma ({{ turma.alunos|length }})</h3>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table-styled">
+                <thead>
+                    <tr>
+                        <th>Nome Completo</th>
+                        {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
+                        <th>Id Func.</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for aluno in turma.alunos | sort(attribute='user.nome_completo') %}
+                    <tr>
+                        <td>{{ aluno.user.nome_completo or aluno.user.username }}</td>
+                        {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
+                        <td>{{ aluno.user.id_func }}</td>
+                        {% endif %}
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="2" class="text-center">Nenhum aluno cadastrado nesta turma.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if current_user.role in ['programador', 'admin_escola'] %}
+    <div class="details-section">
+        <div class="section-header">
+            <h3>Cargos da Turma</h3>
+        </div>
+        <form method="POST" action="{{ url_for('turma.salvar_cargos_turma', turma_id=turma.id) }}">
+            {{ form.hidden_tag() }}
+            <div class="cargos-grid">
+                {% for cargo in cargos_lista %}
+                <div class="form-group">
+                    <label for="cargo_{{ cargo }}">{{ cargo }}</label>
+                    <select id="cargo_{{ cargo }}" name="cargo_{{ cargo }}" class="form-control">
+                        <option value="">-- Nenhum --</option>
+                        {% for aluno in turma.alunos | sort(attribute='user.nome_completo') %}
+                            <option value="{{ aluno.id }}" {% if cargos_atuais[cargo] == aluno.id %}selected{% endif %}>
+                                {{ aluno.user.nome_completo or aluno.user.username }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="form-actions">
+                <a href="{{ url_for('turma.listar_turmas') }}" class="btn btn-secondary">Voltar</a>
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.turma-details-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+@media (min-width: 992px) {
+    .turma-details-grid {
+        grid-template-columns: 2fr 1fr;
+    }
+}
+
+.details-section {
+    background: var(--color-white);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    box-shadow: var(--shadow-soft);
+    border: 1px solid var(--color-border);
+}
+
+.section-header {
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.section-header h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.cargos-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem 1.5rem;
+}
+@media (min-width: 576px) {
+    .cargos-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+}
+
+</style>
+{% endblock %}

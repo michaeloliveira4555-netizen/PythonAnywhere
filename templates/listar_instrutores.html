@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Instrutores</h1>
+<a class="btn btn-primary" href="{{ url_for('instrutor.cadastrar_instrutor') }}">Cadastrar novo instrutor</a>
+<table class="table table-striped mt-3">
+  <thead>
+    <tr>
+      <th>ID</th><th>Nome</th><th>E-mail</th><th>Posto/Graduação</th><th>Telefone</th><th>Ações</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for i in instrutores %}
+    <tr>
+      <td>{{ i.id }}</td>
+      <td>{{ i.user.nome_completo if i.user else '' }}</td>
+      <td>{{ i.user.email if i.user else '' }}</td>
+      <td>{{ i.posto_graduacao or '' }}</td>
+      <td>{{ i.telefone or '' }}</td>
+      <td>
+        <a class="btn btn-sm btn-secondary" href="{{ url_for('instrutor.editar_instrutor', instrutor_id=i.id) }}">Editar</a>
+        <form method="post" action="{{ url_for('instrutor.excluir_instrutor', instrutor_id=i.id) }}" style="display:inline;">
+          {{ form.csrf_token }}
+          <button class="btn btn-sm btn-danger" type="submit">Excluir</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

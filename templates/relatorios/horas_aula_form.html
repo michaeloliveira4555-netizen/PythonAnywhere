@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Gerar Relatório - {{ tipo_relatorio }}{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1>Relatório de Horas-Aula: {{ tipo_relatorio }}</h1>
+    <p>Selecione o período e personalize os dados para gerar o relatório.</p>
+</div>
+
+<div class="table-container" style="max-width: 800px; margin: 0 auto;">
+    <form method="POST" action="{{ url_for('relatorios.gerar_relatorio_horas_aula', tipo=request.args.get('tipo')) }}" target="_blank">
+        <!-- CORREÇÃO APLICADA AQUI -->
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-group">
+            <label for="data_inicio"><strong>Período - Data de Início:</strong></label>
+            <input type="date" name="data_inicio" id="data_inicio" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="data_fim"><strong>Período - Data de Fim:</strong></label>
+            <input type="date" name="data_fim" id="data_fim" class="form-control" required>
+        </div>
+
+        {% if tipo_relatorio == 'Por Instrutor' %}
+        <div class="form-group">
+            <label for="instrutor_ids"><strong>Selecione os Instrutores:</strong></label>
+            
+            <div class="custom-multiselect">
+                <div class="select-button">
+                    <span id="select-button-text">Nenhum instrutor selecionado</span>
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="dropdown-content">
+                    <input type="text" id="search-input" class="form-control" placeholder="Pesquisar instrutor...">
+                    <div id="options-container">
+                        {% for instrutor in todos_instrutores %}
+                        <label class="dropdown-option">
+                            <input type="checkbox" class="instrutor-checkbox" value="{{ instrutor.id }}">
+                            <span>{{ instrutor.user.nome_completo or instrutor.user.username }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <select name="instrutor_ids" id="instrutor_ids" multiple required style="display: none;">
+                {% for instrutor in todos_instrutores %}
+                <option value="{{ instrutor.id }}">{{ instrutor.user.nome_completo or instrutor.user.username }}</option>
+                {% endfor %}
+            </select>
+
+        </div>
+        {% endif %}
+
+        <hr style="margin: 2rem 0;">
+        <h3>Dados do Cabeçalho e Assinaturas</h3>
+        
+        <div class="form-group">
+            <label for="curso_nome">Nome do Curso:</label>
+            <input type="text" name="curso_nome" id="curso_nome" class="form-control" placeholder="Ex: CTSP 2024/2025 – 3ª Edição" required>
+        </div>
+
+        <div class="form-group">
+            <label for="comandante_nome">Nome Completo e Graduação do Comandante da EsFAS:</label>
+            <input type="text" name="comandante_nome" id="comandante_nome" class="form-control" placeholder="Ex: HUMBERTO GOULART NETO– Maj PM">
+        </div>
+
+        <div class="form-group">
+            <label for="auxiliar_nome">Nome Completo e Graduação do Auxiliar da Seção de Ensino:</label>
+            <input type="text" name="auxiliar_nome" id="auxiliar_nome" class="form-control" placeholder="Ex: NOME COMPLETO - Posto/Grad">
+        </div>
+
+        <div class="form-actions" style="justify-content: flex-end;">
+            <a href="{{ url_for('relatorios.index') }}" class="btn btn-secondary">Voltar</a>
+            <button type="submit" name="action" value="preview" class="btn btn-info">Pré-Visualizar</button>
+            <button type="submit" name="action" value="download" class="btn btn-primary">Baixar PDF</button>
+        </div>
+    </form>
+</div>
+
+<style>
+    /* Estilos para o novo componente de seleção */
+    .custom-multiselect {
+        position: relative;
+    }
+    .select-button {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        background-color: var(--color-white);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .select-button:hover, .select-button.open {
+        border-color: var(--color-primary-light);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .arrow {
+        transition: transform 0.2s ease;
+    }
+    .select-button.open .arrow {
+        transform: rotate(180deg);
+    }
+    .dropdown-content {
+        position: absolute;
+        top: 105%;
+        left: 0;
+        width: 100%;
+        background-color: var(--color-white);
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        box-shadow: var(--shadow-medium);
+        z-index: 10;
+        display: none; /* Começa escondido */
+        padding: 0.5rem;
+    }
+    .dropdown-content.show {
+        display: block;
+    }
+    #search-input {
+        margin-bottom: 0.5rem;
+    }
+    #options-container {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    .dropdown-option {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem;
+        cursor: pointer;
+        border-radius: 6px;
+    }
+    .dropdown-option:hover {
+        background-color: #f1f5f9;
+    }
+    .dropdown-option input[type="checkbox"] {
+        margin-right: 0.75rem;
+        width: 1rem;
+        height: 1rem;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const customSelect = document.querySelector('.custom-multiselect');
+    if (!customSelect) return; // Só executa se o seletor existir na página
+
+    const selectButton = customSelect.querySelector('.select-button');
+    const selectButtonText = document.getElementById('select-button-text');
+    const dropdown = customSelect.querySelector('.dropdown-content');
+    const searchInput = document.getElementById('search-input');
+    const checkboxes = customSelect.querySelectorAll('.instrutor-checkbox');
+    const originalSelect = document.getElementById('instrutor_ids');
+
+    // Abre/fecha o dropdown
+    selectButton.addEventListener('click', () => {
+        dropdown.classList.toggle('show');
+        selectButton.classList.toggle('open');
+    });
+
+    // Fecha o dropdown se clicar fora
+    document.addEventListener('click', (e) => {
+        if (!customSelect.contains(e.target)) {
+            dropdown.classList.remove('show');
+            selectButton.classList.remove('open');
+        }
+    });
+    
+    // Filtro de pesquisa
+    searchInput.addEventListener('input', () => {
+        const filter = searchInput.value.toLowerCase();
+        document.querySelectorAll('.dropdown-option').forEach(option => {
+            const label = option.querySelector('span').textContent.toLowerCase();
+            if (label.includes(filter)) {
+                option.style.display = 'flex';
+            } else {
+                option.style.display = 'none';
+            }
+        });
+    });
+
+    // Sincroniza os checkboxes com o select original escondido
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+            const selectedOptions = [];
+            let selectedCount = 0;
+
+            checkboxes.forEach(cb => {
+                const option = originalSelect.querySelector(`option[value="${cb.value}"]`);
+                if (cb.checked) {
+                    selectedOptions.push(option);
+                    option.selected = true;
+                    selectedCount++;
+                } else {
+                    option.selected = false;
+                }
+            });
+            
+            // Atualiza o texto do botão
+            if (selectedCount === 0) {
+                selectButtonText.textContent = 'Nenhum instrutor selecionado';
+            } else if (selectedCount === 1) {
+                selectButtonText.textContent = '1 instrutor selecionado';
+            } else {
+                selectButtonText.textContent = `${selectedCount} instrutores selecionados`;
+            }
+        });
+    });
+});
+</script>
+
+{% endblock %}

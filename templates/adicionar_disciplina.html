@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Adicionar Nova Disciplina{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1>Adicionar Nova Disciplina</h1>
+    <p>Cadastre uma nova matéria que ficará disponível para gerenciamento.</p>
+</div>
+
+<div class="table-container" style="max-width: 700px; margin: 0 auto;">
+    <div class="table-header">
+        <h3>Dados da Disciplina</h3>
+    </div>
+    
+    <form method="POST" action="{{ url_for('disciplina.adicionar_disciplina') }}" style="padding: 1rem 0;">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.materia.label }}
+            {{ form.materia(class="form-control", placeholder="Ex: Legislação Aplicada") }}
+        </div>
+        <div class="form-group">
+            {{ form.carga_horaria_prevista.label }}
+            {{ form.carga_horaria_prevista(class="form-control", placeholder="Ex: 40") }}
+        </div>
+        <div class="form-group">
+            <label for="ciclo">Ciclo</label>
+            <select name="ciclo" id="ciclo" class="form-control" required>
+                <option value="1">Ciclo 1</option>
+                <option value="2">Ciclo 2</option>
+                <option value="3">Ciclo 3</option>
+            </select>
+        </div>
+        
+        <div class="form-actions">
+            <a href="{{ url_for('disciplina.listar_disciplinas') }}" class="btn btn-secondary">Cancelar</a>
+            {{ form.submit(class="btn btn-primary") }}
+        </div>
+    </form>
+</div>
+{% endblock %}

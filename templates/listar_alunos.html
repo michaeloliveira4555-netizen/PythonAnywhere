@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Alunos{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1>Lista de Alunos</h1>
+    <p>Consulte e gerencie os alunos matriculados na escola.</p>
+</div>
+
+<div class="table-container">
+    <div class="table-header">
+        <h3>
+            {% if turma_filtrada %}
+                Alunos da Turma: {{ turma_filtrada }}
+            {% else %}
+                Todos os Alunos
+            {% endif %}
+        </h3>
+        {# --- CORREÇÃO APLICADA AQUI --- #}
+        {% if current_user.role in ['programador', 'admin_escola'] %}
+        <div class="header-actions">
+            <a href="{{ url_for('main.pre_cadastro', role='aluno') }}" class="btn btn-info">
+                <span>+</span> Inserir Pré-Cadastro
+            </a>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-primary">
+                <span>+</span> Cadastrar Novo Aluno
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="table-filters">
+        <strong>Filtrar por Turma:</strong>
+        <div class="filter-buttons">
+            {% for turma in turmas %}
+            <a href="{{ url_for('aluno.listar_alunos', turma=turma.nome) }}"
+               class="btn btn-sm {% if turma_filtrada == turma.nome %}btn-primary{% else %}btn-secondary{% endif %}">
+                {{ turma.nome }}
+            </a>
+            {% else %}
+            <p style="margin: 0.5rem; color: var(--color-text-muted);">Nenhuma turma cadastrada. Vá para a seção "Turmas" para criar uma.</p>
+            {% endfor %}
+            {% if turma_filtrada %}
+            <a href="{{ url_for('aluno.listar_alunos') }}" class="btn btn-sm btn-danger">Limpar Filtro</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        {% if alunos %}
+            <table class="table-styled">
+                <thead>
+                    <tr>
+                        <th>Matrícula</th>
+                        <th>Nome</th>
+                        <th>Turma</th>
+                        <th>Email</th>
+                        <th>Função Atual</th>
+                        <th class="text-right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for aluno in alunos %}
+                    <tr>
+                        <td data-label="Matrícula">{{ aluno.matricula }}</td>
+                        <td data-label="Nome">{{ aluno.user.nome_completo or aluno.user.username }}</td>
+                        <td data-label="Turma">{{ aluno.turma.nome if aluno.turma else 'Sem Turma' }}</td>
+                        <td data-label="Email">{{ aluno.user.email }}</td>
+                        <td data-label="Função">{{ aluno.funcao_atual if aluno.funcao_atual else 'N/A' }}</td>
+                        <td data-label="Ações" class="text-right">
+                            <div class="btn-group">
+                                <a href="{{ url_for('historico.historico_aluno', aluno_id=aluno.id) }}" class="btn btn-sm btn-info">Ver Histórico</a>
+                                {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
+                                <a href="{{ url_for('aluno.editar_aluno', aluno_id=aluno.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                                <form method="POST" action="{{ url_for('aluno.excluir_aluno', aluno_id=aluno.id) }}" onsubmit="return confirm('Tem certeza que deseja excluir este aluno? Esta ação não pode ser desfeita.');" style="display: inline;">
+                                    {{ delete_form.hidden_tag() }}
+                                    <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">👥</div>
+                <h2>Nenhum Aluno Encontrado</h2>
+                <p>
+                    {% if turma_filtrada %}
+                        Não há alunos cadastrados nesta turma.
+                    {% else %}
+                        Nenhum aluno cadastrado no sistema.
+                    {% endif %}
+                </p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

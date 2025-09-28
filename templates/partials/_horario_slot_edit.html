@@ -1,0 +1,33 @@
+{% if aula != 'SKIP' %}
+    <td class="schedule-slot"
+        rowspan="{{ aula.duracao if not aula.is_disposicao else 1 }}"
+        data-dia="{{ dia }}"
+        data-periodo="{{ periodo }}">
+
+        {% if aula.is_disposicao %}
+            <button type="button" class="slot-button disponivel" data-action="add">Adicionar</button>
+        {% else %}
+            <div class="slot-content {% if aula.status == 'pendente' %}pendente{% endif %}">
+                <div class="slot-info">
+                    <div class="disciplina-title">{{ aula.materia }}</div>
+                    <div class="instrutor-name">{{ aula.instrutor }}</div>
+                </div>
+
+                {% if aula.can_edit %}
+                <div class="slot-actions">
+                    <button class="btn-icon" data-action="edit" data-id="{{ aula.id }}" title="Editar Aula">✏️</button>
+                    <button class="btn-icon" data-action="delete" data-id="{{ aula.id }}" title="Remover Aula">🗑️</button>
+                </div>
+                {% else %}
+                <div class="slot-actions">
+                    <span class="no-permission" title="Você não pode editar esta aula">🔒</span>
+                </div>
+                {% endif %}
+
+                {% if aula.status == 'pendente' %}
+                    <span class="status-icon" title="Aguardando confirmação">🕐</span>
+                {% endif %}
+            </div>
+        {% endif %}
+    </td>
+{% endif %}

@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Realizar Questionário{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1>Realizar Questionário</h1>
+    <p>Selecione um questionário e um participante para iniciar.</p>
+</div>
+
+<div class="table-container">
+    <form id="realizar-form" method="POST" action="{{ url_for('questionario.realizar_questionario') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="questionario-body">
+            <div class="form-group">
+                <label for="questionario_id" class="form-label fw-bold">1. Selecione o Questionário</label>
+                <select id="questionario_id" name="questionario_id" class="form-control" required>
+                    <option value="">-- Selecione um questionário --</option>
+                    {% for questionario in questionarios %}
+                    <option value="{{ questionario.id }}">{{ questionario.titulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="user-type-selector">
+                <label class="form-label fw-bold">2. Selecione o Público-Alvo</label>
+                <div class="btn-group w-100" role="group">
+                    <input type="radio" class="btn-check" name="tipo_usuario" id="tipo_aluno" value="aluno" autocomplete="off">
+                    <label class="btn btn-outline-primary" for="tipo_aluno">Aluno</label>
+
+                    <input type="radio" class="btn-check" name="tipo_usuario" id="tipo_instrutor" value="instrutor" autocomplete="off">
+                    <label class="btn btn-outline-primary" for="tipo_instrutor">Instrutor</label>
+                </div>
+            </div>
+            
+            <div id="selecao_usuario_container" class="form-group" style="display: none;">
+                <label for="user_id" class="form-label fw-bold">3. Selecione o Participante</label>
+                <select id="user_id" name="user_id" class="form-control" required>
+                    </select>
+            </div>
+
+            <hr>
+            <div id="perguntas-container">
+                </div>
+        </div>
+
+        <div class="form-actions sticky-actions-footer">
+            <a href="{{ url_for('questionario.index') }}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary" id="submit-button" disabled>Salvar Respostas</button>
+        </div>
+    </form>
+</div>
+
+<style>
+    .questionario-body {
+        /* Adiciona espaço no final para não ser coberto pela barra flutuante */
+        padding-bottom: 100px; 
+    }
+
+    .sticky-actions-footer {
+        position: sticky;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(5px);
+        padding: 1rem 2rem;
+        border-top: 1px solid var(--color-border);
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+        z-index: 100;
+        margin-top: 0; /* Remove a margem superior padrão */
+        /* Ajusta a margem para alinhar com o contentor principal */
+        width: calc(100% + 4rem);
+        margin-left: -2rem; 
+    }
+</style>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoUsuarioRadios = document.querySelectorAll('input[name="tipo_usuario"]');
+    const selecaoUsuarioContainer = document.getElementById('selecao_usuario_container');
+    const userSelect = document.getElementById('user_id');
+    const questionarioSelect = document.getElementById('questionario_id');
+    const perguntasContainer = document.getElementById('perguntas-container');
+    const submitButton = document.getElementById('submit-button');
+
+    const alunos = {{ alunos|tojson }};
+    const instrutores = {{ instrutores|tojson }};
+
+    tipoUsuarioRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            selecaoUsuarioContainer.style.display = 'block';
+            userSelect.innerHTML = '<option value="">-- Selecione um participante --</option>';
+            const users = this.value === 'aluno' ? alunos : instrutores;
+            users.forEach(user => {
+                const option = new Option(user.nome_completo, user.id);
+                userSelect.add(option);
+            });
+            checkFormValidity();
+        });
+    });
+
+    questionarioSelect.addEventListener('change', function() {
+        const questionarioId = this.value;
+        perguntasContainer.innerHTML = '';
+        if (questionarioId) {
+            fetch(`/questionario/api/get-perguntas/${questionarioId}`)
+                .then(response => response.json())
+                .then(perguntas => {
+                    perguntas.forEach(p => {
+                        const perguntaDiv = document.createElement('div');
+                        perguntaDiv.className = 'form-group question-block';
+                        
+                        const inputType = p.tipo === 'multipla' ? 'checkbox' : 'radio';
+                        
+                        let opcoesHtml = '<div class="answer-options-container">';
+                        p.opcoes.forEach(o => {
+                            opcoesHtml += `
+                                <div class="answer-option">
+                                    <input type="${inputType}" name="pergunta_${p.id}" id="opcao_${o.id}" value="${o.id}">
+                                    <label for="opcao_${o.id}">${o.texto}</label>
+                                </div>
+                            `;
+                        });
+                        opcoesHtml += '</div>';
+
+                        if (p.opcoes.some(o => o.texto.toLowerCase().includes('outro') || o.texto.toLowerCase().includes('quais'))) {
+                             opcoesHtml += `
+                                <div class="form-group mt-2" id="outro_container_${p.id}" style="display:none;">
+                                    <input type="text" name="outro_${p.id}" class="form-control" placeholder="Por favor, especifique.">
+                                </div>
+                             `;
+                             
+                             setTimeout(() => {
+                                document.querySelectorAll(`input[name="pergunta_${p.id}"]`).forEach(input => {
+                                    input.addEventListener('change', (e) => {
+                                        const outroContainer = document.getElementById(`outro_container_${p.id}`);
+                                        const labelText = e.target.labels[0].textContent.toLowerCase();
+                                        const shouldShow = e.target.checked && (labelText.includes('outro') || labelText.includes('quais'));
+                                        
+                                        outroContainer.style.display = shouldShow ? 'block' : 'none';
+                                        outroContainer.querySelector('input').required = shouldShow;
+                                    });
+                                });
+                             }, 0);
+                        }
+
+                        perguntaDiv.innerHTML = `<label class="question-title">${p.texto}</label>${opcoesHtml}`;
+                        perguntasContainer.appendChild(perguntaDiv);
+                    });
+                    checkFormValidity();
+                });
+        }
+    });
+
+    document.getElementById('realizar-form').addEventListener('change', checkFormValidity);
+
+    function checkFormValidity() {
+        const questionarioOK = questionarioSelect.value !== '';
+        const usuarioOK = userSelect.value !== '';
+        const perguntasOK = perguntasContainer.children.length > 0;
+        submitButton.disabled = !(questionarioOK && usuarioOK && perguntasOK);
+    }
+});
+</script>
+{% endblock %}

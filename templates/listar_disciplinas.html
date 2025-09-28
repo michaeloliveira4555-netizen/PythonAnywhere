@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Disciplinas{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1>Disciplinas</h1>
+    <p>Gerencie as matérias e seus respectivos instrutores por pelotão.</p>
+</div>
+
+<div class="ciclo-selector">
+    <strong>Ciclo:</strong>
+    <div class="filter-buttons">
+        {% for ciclo_num in ciclos %}
+        <a href="{{ url_for('disciplina.listar_disciplinas', ciclo=ciclo_num) }}" 
+           class="btn btn-sm {% if ciclo_selecionado == ciclo_num %}btn-warning{% else %}btn-secondary{% endif %}">
+            Ciclo {{ ciclo_num }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="table-container">
+    <div class="table-header">
+        <h3>
+
+            {% if pelotao_filtrado %}
+                Instrutores do {{ pelotao_filtrado }} - Ciclo {{ ciclo_selecionado }}
+            {% else %}
+                Disciplinas do Ciclo {{ ciclo_selecionado }}
+            {% endif %}
+        </h3>
+        {% if current_user.role in ['programador', 'admin_escola'] %}
+        <a href="{{ url_for('disciplina.adicionar_disciplina') }}" class="btn btn-primary">
+            <span>+</span> Adicionar Nova Disciplina
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="table-filters">
+        <strong>Visualizar Pelotão:</strong>
+        <div class="filter-buttons">
+            {% for i in range(1, 9) %}
+            <a href="{{ url_for('disciplina.listar_disciplinas', pelotao=i ~ '° Pelotão', ciclo=ciclo_selecionado) }}" 
+               class="btn btn-sm {% if pelotao_filtrado and pelotao_filtrado == i ~ '° Pelotão' %}btn-primary{% else %}btn-secondary{% endif %}">
+                {{ i }}º Pelotão
+            </a>
+            {% endfor %}
+            {% if pelotao_filtrado %}
+            <a href="{{ url_for('disciplina.listar_disciplinas', ciclo=ciclo_selecionado) }}" class="btn btn-sm btn-danger">Limpar Filtro</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        {% if disciplinas %}
+            <table class="table-styled">
+                <thead>
+                    <tr>
+                        <th>Matéria</th>
+                        <th>Carga Horária</th>
+                        {% if pelotao_filtrado %}
+                        <th>Instrutor(es) ({{ pelotao_filtrado }})</th>
+                        {% endif %}
+                        <th class="text-right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for disciplina in disciplinas %}
+                    <tr>
+                        <td data-label="Matéria">{{ disciplina.materia }}</td>
+                        <td data-label="Carga Horária">{{ disciplina.carga_horaria_prevista if disciplina.carga_horaria_prevista > 0 else 'N/D' }}h</td>
+                        {% if pelotao_filtrado %}
+                        <td data-label="Instrutor(es)">
+                            {% set associacao = disciplina.associacoes_turmas|selectattr('pelotao', 'equalto', pelotao_filtrado)|first %}
+                            {% if associacao and associacao.instrutor_1 %}
+                                <div>{{ associacao.instrutor_1.user.nome_completo or associacao.instrutor_1.user.username }}</div>
+                                {% if associacao.instrutor_2 %}
+                                    <div style="color: #6c757d;">{{ associacao.instrutor_2.user.nome_completo or associacao.instrutor_2.user.username }}</div>
+                                {% endif %}
+                            {% else %}
+                                <span style="color: #aaa;">Não atribuído</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        <td data-label="Ações" class="text-right">
+                            <div class="btn-group">
+                                {% if current_user.role in ['programador', 'admin_escola'] %}
+                                <a href="{{ url_for('disciplina.editar_disciplina', disciplina_id=disciplina.id) }}" class="btn btn-sm btn-warning">Gerenciar</a>
+                                <form method="POST" action="{{ url_for('disciplina.excluir_disciplina', disciplina_id=disciplina.id) }}" style="display: inline;" onsubmit="return confirm('⚠️ ATENÇÃO: Excluir esta disciplina irá:\n\n• Remover todas as associações com instrutores\n• Remover todas as aulas agendadas\n• Remover do histórico de todos os alunos\n\nEsta ação NÃO PODE ser desfeita!\n\nTem certeza que deseja continuar?');">
+                                    {{ delete_form.hidden_tag() }}
+                                    <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                                </form>
+                                {% else %}
+                                <span class="text-muted">Sem ações</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📚</div>
+                <h2>Nenhuma Disciplina Cadastrada</h2>
+                <p>Nenhuma disciplina foi encontrada para o Ciclo {{ ciclo_selecionado }}.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.ciclo-selector {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: var(--color-background);
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    margin-bottom: 2rem;
+}
+.btn-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: flex-end;
+}
+.btn-group form {
+    margin: 0;
+}
+@media (max-width: 768px) {
+    .btn-group {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .btn-group .btn {
+        width: 100%;
+        font-size: 0.8rem;
+    }
+}
+</style>
+{% endblock %}

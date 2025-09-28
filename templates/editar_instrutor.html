@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Editar Instrutor</h1>
+<form method="post">
+  {{ form.csrf_token }}
+  <div class="mb-2">
+    <label>Nome completo</label>
+    {{ form.nome_completo(class="form-control") }}
+  </div>
+  <div class="mb-2">
+    <label>Nome de guerra</label>
+    {{ form.nome_de_guerra(class="form-control") }}
+  </div>
+  <div class="mb-2">
+    <label>Posto/Graduação</label>
+    {{ form.posto_graduacao_select(class="form-select", id="posto_graduacao_select") }}
+  </div>
+  <div class="mb-2" id="postoOutroWrap" style="display: none;">
+    <label>Outro (especifique)</label>
+    {{ form.posto_graduacao_outro(class="form-control", id="posto_graduacao_outro") }}
+  </div>
+  <div class="mb-2">
+    <label>Telefone</label>
+    {{ form.telefone(class="form-control") }}
+  </div>
+  <div class="form-check mb-3">
+    {{ form.is_rr(class="form-check-input", id="is_rr") }}
+    <label class="form-check-label" for="is_rr">RR</label>
+  </div>
+  <button class="btn btn-primary" type="submit">Salvar</button>
+  <a class="btn btn-secondary" href="{{ url_for('instrutor.listar_instrutores') }}">Voltar</a>
+</form>
+
+<script>
+(function(){
+  function syncOutro(){
+    var sel = document.getElementById('posto_graduacao_select');
+    var wrap = document.getElementById('postoOutroWrap');
+    if (!sel || !wrap) return;
+    wrap.style.display = (sel.value === 'Outro') ? 'block' : 'none';
+  }
+  document.addEventListener('change', syncOutro);
+  document.addEventListener('DOMContentLoaded', syncOutro);
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Disciplina - {{ disciplina.materia }}{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1>Gerenciar Disciplina</h1>
+    <p>Defina a carga horária da disciplina.</p>
+</div>
+
+<div class="table-container" style="max-width: 800px; margin: 0 auto;">
+    <div class="table-header">
+        <h3>{{ disciplina.materia }}</h3>
+    </div>
+    
+    <form method="POST" action="{{ url_for('disciplina.editar_disciplina', disciplina_id=disciplina.id) }}">
+        {{ form.hidden_tag() }}
+        <div class="form-group" style="padding: 1rem 0;">
+            {{ form.carga_horaria_prevista.label(class="font-weight-bold") }}
+            {{ form.carga_horaria_prevista(class="form-control", placeholder="Ex: 40") }}
+        </div>
+        
+        <div class="form-actions">
+            <a href="{{ url_for('disciplina.listar_disciplinas') }}" class="btn btn-secondary">Cancelar</a>
+            {{ form.submit(class="btn btn-primary") }}
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Sistema EsFAS{% endblock %}
+
+{% block navbar_content %}{% endblock %}
+
+{% block content %}
+<div class="auth-page-container">
+    <div class="auth-card">
+        <div class="card-logo-container">
+            <img src="{{ url_for('static', filename='img/brasao.png') }}" alt="Brasão da Escola">
+        </div>
+        <h2>Login no Sistema</h2>
+
+        <form method="POST" action="{{ url_for('auth.login') }}">
+            {{ form.hidden_tag() }} {# Mantém a proteção CSRF #}
+            <div class="form-group">
+                <label for="username">Id Func / Usuário:</label>
+                <input type="text" id="username" name="username" placeholder="Digite sua Id Func ou usuário" required value="{{ form.username.data or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="password">Senha:</label>
+                <input type="password" id="password" name="password" placeholder="Digite sua senha" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Entrar</button>
+        </form>
+        
+        <div class="auth-link" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <a href="{{ url_for('auth.register') }}">Não tem uma conta ativa? Ative aqui.</a>
+            <a href="{{ url_for('auth.set_new_with_token') }}">Esqueci minha senha</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
