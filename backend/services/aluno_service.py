@@ -43,12 +43,10 @@ class AlunoService:
         if existing_aluno:
             return False, "Este usuário já possui um perfil de aluno cadastrado."
 
-        matricula = data.get('matricula')
-        if not matricula:
-            user = db.session.get(User, user_id)
-            if not user:
-                return False, "Usuário não encontrado."
-            matricula = user.id_func
+        user = db.session.get(User, user_id)
+        if not user:
+            return False, "Usuário não encontrado."
+        matricula = user.matricula # Pega a matrícula do usuário
 
         opm = data.get('opm')
         turma_id = data.get('turma_id')
@@ -56,15 +54,15 @@ class AlunoService:
             turma_id = None
         funcao_atual = data.get('funcao_atual')
 
-        if not all([matricula, opm]):
-            return False, "Todos os campos (Matrícula, OPM) são obrigatórios."
+        if not all([opm]): # Matrícula já vem do usuário
+            return False, "O campo OPM é obrigatório."
 
         try:
             foto_filename = _save_profile_picture(foto_perfil)
 
+            # CORREÇÃO: Removido o argumento 'matricula' que já não existe no modelo Aluno
             novo_aluno = Aluno(
                 user_id=user_id,
-                matricula=matricula,
                 opm=opm,
                 turma_id=int(turma_id) if turma_id else None,
                 funcao_atual=funcao_atual,
@@ -92,7 +90,7 @@ class AlunoService:
             return True, "Perfil de aluno cadastrado e matriculado nas disciplinas da escola!"
         except IntegrityError:
             db.session.rollback()
-            return False, "Erro de integridade dos dados. Verifique se a matrícula já está em uso."
+            return False, "Erro de integridade dos dados."
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Erro inesperado ao cadastrar aluno: {e}")
@@ -128,14 +126,15 @@ class AlunoService:
             return False, "Aluno não encontrado."
 
         nome_completo = data.get('nome_completo')
-        matricula = data.get('matricula')
+        # A matrícula é atualizada no objeto User, não no Aluno
+        matricula_nova = data.get('matricula')
         opm = data.get('opm')
         turma_id_val = data.get('turma_id')
         if turma_id_val == 0:
             turma_id_val = None
         nova_funcao_atual = data.get('funcao_atual')
 
-        if not all([nome_completo, matricula, opm]) or turma_id_val in (None, ''):
+        if not all([nome_completo, matricula_nova, opm]) or turma_id_val in (None, ''):
             return False, "Nome, Matrícula, OPM e Turma são campos obrigatórios."
 
         try:
@@ -145,10 +144,11 @@ class AlunoService:
                 nova_turma_id = None
 
             alteracoes = []
-            if aluno.user and aluno.user.nome_completo != nome_completo:
-                alteracoes.append(f"Nome alterado de '{aluno.user.nome_completo or 'N/A'}' para '{nome_completo or 'N/A'}'")
-            if aluno.matricula != matricula:
-                alteracoes.append(f"Matrícula alterada de '{aluno.matricula or 'N/A'}' para '{matricula or 'N/A'}'")
+            if aluno.user:
+                if aluno.user.nome_completo != nome_completo:
+                    alteracoes.append(f"Nome alterado de '{aluno.user.nome_completo or 'N/A'}' para '{nome_completo or 'N/A'}'")
+                if aluno.user.matricula != matricula_nova:
+                    alteracoes.append(f"Matrícula alterada de '{aluno.user.matricula or 'N/A'}' para '{matricula_nova or 'N/A'}'")
             if aluno.opm != opm:
                 alteracoes.append(f"OPM alterada de '{aluno.opm or 'N/A'}' para '{opm or 'N/A'}'")
             if aluno.turma_id != nova_turma_id:
@@ -172,7 +172,7 @@ class AlunoService:
 
             if aluno.user:
                 aluno.user.nome_completo = nome_completo
-            aluno.matricula = matricula
+                aluno.user.matricula = matricula_nova
             aluno.opm = opm
             aluno.turma_id = nova_turma_id
             aluno.funcao_atual = nova_funcao_atual
@@ -200,15 +200,16 @@ class AlunoService:
             return False, "Aluno não encontrado."
 
         try:
-            # --- CORREÇÃO APLICADA AQUI ---
-            # Exclui manualmente os dependentes antes de excluir o aluno/usuário
-            db.session.query(HistoricoDisciplina).filter_by(aluno_id=aluno.id).delete()
-            db.session.query(HistoricoAluno).filter_by(aluno_id=aluno.id).delete()
-            
             user_a_deletar = aluno.user
-            db.session.delete(user_a_deletar) # O cascade removerá o perfil do aluno
-            db.session.commit()
-            return True, "Aluno e todos os seus registros foram excluídos com sucesso!"
+            if user_a_deletar:
+                db.session.delete(user_a_deletar)
+                db.session.commit()
+                return True, "Aluno e todos os seus registos foram excluídos com sucesso!"
+            else:
+                db.session.delete(aluno)
+                db.session.commit()
+                return True, "Perfil de aluno órfão removido com sucesso."
+
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Erro ao excluir aluno: {e}")

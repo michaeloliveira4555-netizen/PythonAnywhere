@@ -1,3 +1,4 @@
+# backend/controllers/auth_controller.py
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import login_user, logout_user, login_required
 from flask_wtf import FlaskForm
@@ -14,14 +15,14 @@ auth_bp = Blueprint('auth', __name__)
 
 # Define o formulário de login
 class LoginForm(FlaskForm):
-    username = StringField('Id Func / Usuário', validators=[DataRequired()])
+    username = StringField('Matrícula / Usuário', validators=[DataRequired()])
     password = PasswordField('Senha', validators=[DataRequired()])
     submit = SubmitField('Entrar')
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        id_func = request.form.get('id_func')
+        matricula = request.form.get('matricula')
         nome_completo = request.form.get('nome_completo')
         nome_de_guerra = request.form.get('nome_de_guerra')
         email = request.form.get('email')
@@ -43,11 +44,11 @@ def register():
             return render_template('register.html', form_data=request.form)
 
         user = db.session.execute(
-            db.select(User).filter_by(id_func=id_func, role=role)
+            db.select(User).filter_by(matricula=matricula, role=role)
         ).scalar_one_or_none()
 
         if not user:
-            flash('Identidade Funcional não encontrada para a função selecionada. Contate a administração.', 'danger')
+            flash('Matrícula não encontrada para a função selecionada. Contate a administração.', 'danger')
             return render_template('register.html', form_data=request.form)
 
         if user.is_active:
@@ -63,11 +64,10 @@ def register():
             flash('Este e-mail já está em uso por outra conta.', 'danger')
             return render_template('register.html', form_data=request.form)
 
-        # Ativa a conta (o vínculo com a escola já foi feito no pré-cadastro)
         user.nome_completo = nome_completo
         user.nome_de_guerra = nome_de_guerra
         user.email = email
-        user.username = id_func
+        user.username = matricula
         user.set_password(password)
         user.is_active = True
         
@@ -86,7 +86,7 @@ def login():
         login_identifier = form.username.data
         password = form.password.data
 
-        user = db.session.execute(db.select(User).filter_by(id_func=login_identifier)).scalar_one_or_none()
+        user = db.session.execute(db.select(User).filter_by(matricula=login_identifier)).scalar_one_or_none()
 
         if not user:
             user = db.session.execute(db.select(User).filter_by(username=login_identifier)).scalar_one_or_none()
@@ -109,7 +109,7 @@ def login():
         elif user and not user.is_active:
             flash('Sua conta precisa ser ativada. Use a página de registro para ativá-la.', 'warning')
         else:
-            flash('Id Func/Usuário ou senha inválidos.', 'danger')
+            flash('Matrícula/Usuário ou senha inválidos.', 'danger')
 
     return render_template('login.html', form=form)
 
@@ -125,12 +125,12 @@ def logout():
 @auth_bp.route('/set-new-with-token', methods=['GET', 'POST'])
 def set_new_with_token():
     if request.method == 'POST':
-        id_func = request.form.get('id_func', '').strip()
+        matricula = request.form.get('matricula', '').strip()
         raw_token = request.form.get('token', '').strip()
         password = request.form.get('password', '')
         password2 = request.form.get('password2', '')
 
-        if not id_func or not raw_token or not password or not password2:
+        if not matricula or not raw_token or not password or not password2:
             flash('Preencha todos os campos.', 'danger')
             return render_template('set_new_with_token.html', form_data=request.form)
 
@@ -142,8 +142,9 @@ def set_new_with_token():
         if not is_strong:
             flash(message, 'danger')
             return render_template('set_new_with_token.html', form_data=request.form)
-
-        user = PasswordResetService.consume_with_user_and_raw_token(id_func, raw_token)
+        
+        # O PasswordResetService não precisa ser alterado se internamente ele busca o user pela matricula
+        user = PasswordResetService.consume_with_user_and_raw_token(matricula, raw_token)
         if not user:
             flash('Token inválido, expirado ou dados incorretos.', 'danger')
             return render_template('set_new_with_token.html', form_data=request.form)

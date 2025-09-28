@@ -16,7 +16,8 @@ class User(UserMixin, db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
-    id_func = db.Column(db.String(20), unique=True, nullable=False)
+    # ALTERADO: id_func -> matricula
+    matricula = db.Column(db.String(20), unique=True, nullable=False)
     username = db.Column(db.String(80), unique=True, nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=True)
     password_hash = db.Column(db.String(256), nullable=True)
@@ -29,7 +30,6 @@ class User(UserMixin, db.Model):
     aluno_profile = relationship('Aluno', back_populates='user', uselist=False, cascade="all, delete-orphan")
     instrutor_profile = relationship('Instrutor', back_populates='user', uselist=False, cascade="all, delete-orphan")
     
-    # RELACIONAMENTOS CORRIGIDOS
     user_schools = relationship('UserSchool', back_populates='user', cascade="all, delete-orphan")
     schools = relationship('School', secondary='user_schools', back_populates='users', overlaps="user_schools")
 
@@ -44,4 +44,4 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
     def __repr__(self):
-        return f'<User {self.username or self.id_func}>'
+        return f'<User {self.username or self.matricula}>'  

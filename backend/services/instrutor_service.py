@@ -1,4 +1,3 @@
-
 from flask import current_app
 from sqlalchemy import select, delete, or_
 from sqlalchemy.exc import IntegrityError
@@ -17,10 +16,7 @@ class InstrutorService:
         email = (email or '').strip()
         if not email:
             return None
-        u = db.session.scalar(select(User).where(User.email == email))
-        if u:
-            return u
-        return db.session.scalar(select(User).where(User.username == email))
+        return db.session.scalar(select(User).where(User.email == email))
 
     @staticmethod
     def _ensure_user_school(user_id: int, school_id: int, role: str = 'instrutor'):
@@ -32,11 +28,7 @@ class InstrutorService:
 
     @staticmethod
     def create_full_instrutor(data, school_id):
-        """Cria (ou reaproveita) um usuário e o perfil Instrutor, vinculando à escola.
-        - Se já existir User com o mesmo e-mail/username, NÃO exige senha e NÃO altera a senha.
-        - Só exige senha quando for criar um novo User.
-        - Impede duplicidade por matrícula (se informada) e por e-mail quando já houver perfil de instrutor.
-        """
+        """Cria (ou reaproveita) um usuário e o perfil Instrutor, vinculando à escola."""
         try:
             matricula = (data.get('matricula') or '').strip()
             email = (data.get('email') or '').strip()
@@ -51,51 +43,36 @@ class InstrutorService:
             telefone = (data.get('telefone') or '').strip() or None
             is_rr = str(data.get('is_rr') or '').lower() in ('sim', 'true', '1', 'on')
 
+            if not matricula:
+                return False, "O campo Matrícula é obrigatório."
             if not email:
-                return False, "E-mail é obrigatório."
+                return False, "O campo E-mail é obrigatório."
 
-            # Evitar duplicidade de matrícula no perfil
-            if matricula:
-                exists_mat = db.session.scalar(select(Instrutor).where(Instrutor.matricula == matricula))
-                if exists_mat:
-                    return False, "Já existe um instrutor com esta matrícula."
+            # VERIFICAÇÕES PRÉVIAS PARA ERROS CLAROS
+            if db.session.scalar(select(User).where(User.matricula == matricula)):
+                return False, f"A Matrícula '{matricula}' já está em uso por outro usuário."
+            if db.session.scalar(select(User).where(User.email == email)):
+                return False, f"O e-mail '{email}' já está em uso por outro usuário."
 
-            # Upsert de usuário por e-mail
-            user = InstrutorService._find_user_by_email_or_username(email)
-            if user:
-                # Se já tinha perfil de instrutor, impedir duplicação
-                if db.session.scalar(select(Instrutor).where(Instrutor.user_id == user.id)):
-                    return False, "Já existe um instrutor com este e-mail."
-                # Atualiza dados básicos (sem mexer na senha)
-                if nome_completo:
-                    user.nome_completo = nome_completo
-                if nome_de_guerra:
-                    user.nome_de_guerra = nome_de_guerra
-                user.role = 'instrutor'
-            else:
-                # Criar novo usuário → exige senha
-                if not password:
-                    return False, "Senha é obrigatória para criar um novo usuário."
-                user = User(
-                    email=email,
-                    username=email,
-                    role='instrutor',
-                    nome_completo=nome_completo or None,
-                    nome_de_guerra=nome_de_guerra or None,
-                    id_func=matricula or None
-                )
-                if hasattr(user, 'set_password'):
-                    user.set_password(password)
-                else:
-                    user.password = password
-                db.session.add(user)
-                db.session.flush()
+            # LÓGICA DE CRIAÇÃO SIMPLIFICADA E CORRIGIDA
+            if not password:
+                return False, "Senha é obrigatória para criar um novo usuário."
+            
+            user = User(
+                email=email,
+                username=email,
+                role='instrutor',
+                nome_completo=nome_completo or None,
+                nome_de_guerra=nome_de_guerra or None,
+                matricula=matricula
+            )
+            user.set_password(password)
+            db.session.add(user)
+            db.session.flush()
 
-            # Cria o perfil de instrutor
             instrutor = Instrutor(
                 user_id=user.id,
-                matricula=matricula,
-                especializacao='',   # defaults seguros para colunas legadas
+                especializacao='',
                 formacao=None,
                 credor=None,
                 posto_graduacao=posto,
@@ -104,20 +81,21 @@ class InstrutorService:
             )
             db.session.add(instrutor)
 
-            # Vincula à escola
             if school_id:
                 InstrutorService._ensure_user_school(user.id, int(school_id), role='instrutor')
 
             db.session.commit()
             return True, "Instrutor cadastrado com sucesso!"
+
         except IntegrityError as e:
             db.session.rollback()
-            current_app.logger.exception("IntegrityError ao criar instrutor")
-            return False, "Dados já existentes (verifique matrícula/e-mail)."
+            current_app.logger.error(f"Erro de Integridade Inesperado: {e.orig}")
+            return False, "Erro de integridade da base de dados. Verifique os dados e tente novamente."
+
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception("Erro geral ao criar instrutor")
-            return False, f"Ocorreu um erro ao criar o instrutor: {str(e)}"
+            return False, f"Ocorreu um erro inesperado ao criar o instrutor."
 
     @staticmethod
     def get_instrutor_by_id(instrutor_id: int):
@@ -142,13 +120,10 @@ class InstrutorService:
             posto_outro = (data.get('posto_graduacao_outro') or '').strip()
             posto = posto_outro if (posto_sel == 'Outro' and posto_outro) else (posto_sel or None)
 
-            # Atualiza dados do usuário associado
             user = db.session.get(User, instrutor.user_id)
             if user:
-                if nome_completo:
-                    user.nome_completo = nome_completo
-                if nome_de_guerra:
-                    user.nome_de_guerra = nome_de_guerra
+                if nome_completo: user.nome_completo = nome_completo
+                if nome_de_guerra: user.nome_de_guerra = nome_de_guerra
 
             instrutor.telefone = (telefone or None)
             instrutor.posto_graduacao = posto
@@ -165,39 +140,19 @@ class InstrutorService:
         instrutor = db.session.get(Instrutor, instrutor_id)
         if not instrutor:
             return False, "Instrutor não encontrado."
+        
         try:
-            # DisciplinaTurma: detectar colunas/relationships que existirem
-            dt_conditions = []
-            for cname in ('instrutor_id', 'instrutor_id_1', 'instrutor_id_2', 'instrutor_1_id', 'instrutor_2_id'):
-                if hasattr(DisciplinaTurma, cname):
-                    dt_conditions.append(getattr(DisciplinaTurma, cname) == instrutor_id)
-            if hasattr(DisciplinaTurma, 'instrutor_1'):
-                dt_conditions.append(DisciplinaTurma.instrutor_1.has(Instrutor.id == instrutor_id))
-            if hasattr(DisciplinaTurma, 'instrutor_2'):
-                dt_conditions.append(DisciplinaTurma.instrutor_2.has(Instrutor.id == instrutor_id))
-            if dt_conditions:
-                for row in db.session.query(DisciplinaTurma).filter(or_(*dt_conditions)).all():
-                    db.session.delete(row)
+            user_a_deletar = instrutor.user
+            if user_a_deletar:
+                db.session.delete(user_a_deletar)
+                db.session.commit()
+                return True, "Instrutor e usuário vinculado foram excluídos com sucesso."
+            else:
+                db.session.delete(instrutor)
+                db.session.commit()
+                return True, "Perfil de instrutor órfão removido com sucesso."
 
-            # Horario
-            if hasattr(Horario, 'instrutor_id'):
-                db.session.execute(delete(Horario).where(Horario.instrutor_id == instrutor_id))
-            elif hasattr(Horario, 'instrutor'):
-                for h in db.session.query(Horario).filter(Horario.instrutor.has(Instrutor.id == instrutor_id)).all():
-                    db.session.delete(h)
-
-            # Vínculos escola
-            db.session.query(UserSchool).filter_by(user_id=instrutor.user_id).delete()
-
-            # Perfil + usuário
-            user = db.session.get(User, instrutor.user_id)
-            db.session.delete(instrutor)
-            if user:
-                db.session.delete(user)
-
-            db.session.commit()
-            return True, "Instrutor e registros vinculados excluídos com sucesso."
         except Exception as e:
             db.session.rollback()
-            current_app.logger.exception("Erro ao excluir instrutor (cascade)")
+            current_app.logger.error(f"Erro ao excluir instrutor: {e}")
             return False, f"Erro ao excluir instrutor: {str(e)}"

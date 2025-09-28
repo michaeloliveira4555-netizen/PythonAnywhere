@@ -55,7 +55,6 @@ def dashboard():
 @login_required
 @admin_or_programmer_required
 def pre_cadastro():
-    # --- CORREÇÃO ADICIONADA AQUI ---
     if current_user.role == 'super_admin':
         flash('Super Administradores não podem pré-cadastrar usuários. Use o painel de Super Admin para gerenciar escolas e administradores.', 'warning')
         return redirect(url_for('super_admin.dashboard'))
@@ -67,9 +66,10 @@ def pre_cadastro():
         if role_arg and not form_data.get('role'):
             form_data['role'] = role_arg
 
-        id_funcs_raw = form_data.get('id_funcs', '').strip() 
-        if '/' in id_funcs_raw or ' ' in id_funcs_raw or ',' in id_funcs_raw or ';' in id_funcs_raw:
-            partes = [p.strip() for p in id_funcs_raw.replace(',', ' ').replace(';', ' ').split() if p.strip()]
+        # CORRIGIDO: de id_funcs_raw para matriculas_raw
+        matriculas_raw = form_data.get('matriculas', '').strip() 
+        if '/' in matriculas_raw or ' ' in matriculas_raw or ',' in matriculas_raw or ';' in matriculas_raw:
+            partes = [p.strip() for p in matriculas_raw.replace(',', ' ').replace(';', ' ').split() if p.strip()]
             ids_numericos = [p for p in partes if p.isdigit()]
 
             if not form_data.get('role'):
@@ -83,7 +83,8 @@ def pre_cadastro():
                 flash('Falha ao pré-cadastrar usuários em lote.', 'danger')
             return redirect(url_for('main.pre_cadastro', role=role_arg) if role_arg else url_for('main.pre_cadastro'))
         else:
-            form_data['id_func'] = id_funcs_raw
+            # CORRIGIDO: de id_func para matricula
+            form_data['matricula'] = matriculas_raw
             success, message = UserService.pre_register_user(form_data)
             if success:
                 flash(message, 'success')

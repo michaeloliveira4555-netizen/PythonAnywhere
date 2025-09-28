@@ -155,8 +155,9 @@ def register_cli_commands(app):
                 user.set_password(super_admin_password)
             else:
                 print("Criando o usuário super administrador 'super_admin'...")
+                # CORREÇÃO: trocado id_func por matricula
                 user = User(
-                    id_func='SUPER_ADMIN', 
+                    matricula='SUPER_ADMIN', 
                     username='super_admin', 
                     email='super_admin@escola.com.br', 
                     role='super_admin', 
@@ -174,13 +175,14 @@ def register_cli_commands(app):
             if not prog_password:
                 print("A variável de ambiente PROGRAMMER_PASSWORD não está definida.")
                 return
-            user = db.session.execute(db.select(User).filter_by(id_func='PROG001')).scalar_one_or_none()
+            user = db.session.execute(db.select(User).filter_by(matricula='PROG001')).scalar_one_or_none()
             if user:
                 print("O usuário 'programador' já existe.")
             else:
                 print("Criando o usuário programador...")
+                # CORREÇÃO: trocado id_func por matricula
                 user = User(
-                    id_func='PROG001', 
+                    matricula='PROG001', 
                     username='programador', 
                     email='dev@escola.com.br', 
                     role='programador', 

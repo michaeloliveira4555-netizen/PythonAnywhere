@@ -11,16 +11,16 @@
             <img src="{{ url_for('static', filename='img/brasao.png') }}" alt="Brasão da Escola">
         </div>
         <h2>Definir nova senha com código</h2>
-        <p style="font-size: 0.9rem; opacity: 0.8; margin-top: -15px; margin-bottom: 20px;">Informe sua Id Func e o código de redefinição fornecido pela administração.</p>
+        <p style="font-size: 0.9rem; opacity: 0.8; margin-top: -15px; margin-bottom: 20px;">Informe sua Matrícula e o código de redefinição fornecido pela administração.</p>
 
         <form method="POST" action="{{ url_for('auth.set_new_with_token') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="form-group">
-                <label for="id_func">Id Func:</label>
-                <input type="text" id="id_func" name="id_func" class="form-control"
+                <label for="matricula">Matrícula:</label>
+                <input type="text" id="matricula" name="matricula" class="form-control"
                        pattern="[0-9]*" inputmode="numeric"
-                       placeholder="Digite sua Id Func" value="{{ form_data.get('id_func','') }}" required>
+                       placeholder="Digite sua Matrícula" value="{{ form_data.get('matricula','') }}" required>
             </div>
 
             <div class="form-group">

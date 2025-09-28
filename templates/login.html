@@ -15,8 +15,8 @@
         <form method="POST" action="{{ url_for('auth.login') }}">
             {{ form.hidden_tag() }} {# Mantém a proteção CSRF #}
             <div class="form-group">
-                <label for="username">Id Func / Usuário:</label>
-                <input type="text" id="username" name="username" placeholder="Digite sua Id Func ou usuário" required value="{{ form.username.data or '' }}">
+                <label for="username">Matrícula / Usuário:</label>
+                <input type="text" id="username" name="username" placeholder="Digite sua Matrícula ou usuário" required value="{{ form.username.data or '' }}">
             </div>
             <div class="form-group">
                 <label for="password">Senha:</label>

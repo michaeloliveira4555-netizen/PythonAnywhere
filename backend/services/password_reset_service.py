@@ -28,8 +28,9 @@ class PasswordResetService:
         return raw
 
     @staticmethod
-    def consume_with_user_and_raw_token(id_func: str, raw_token: str) -> User | None:
-        user = db.session.execute(db.select(User).filter_by(id_func=id_func)).scalar_one_or_none()
+    def consume_with_user_and_raw_token(matricula: str, raw_token: str) -> User | None:
+        # CORRIGIDO: de id_func para matricula
+        user = db.session.execute(db.select(User).filter_by(matricula=matricula)).scalar_one_or_none()
         if not user:
             return None
         # Busca tokens usáveis mais recentes primeiro
@@ -42,18 +43,15 @@ class PasswordResetService:
         if not token:
             return None
 
-        # Verifica condições de uso
         if not token.is_usable():
             return None
 
-        # Verifica hash do token
         if not token.verify_token(raw_token):
             token.attempts += 1
             db.session.commit()
             return None
 
-        # Marca como usado
-        token.used_at = datetime.now(timezone.utc) # <-- CORRIGIDO
+        token.used_at = datetime.now(timezone.utc)
         db.session.commit()
         return user
 

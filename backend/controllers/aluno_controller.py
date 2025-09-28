@@ -1,6 +1,6 @@
 # backend/controllers/aluno_controller.py
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 
 from sqlalchemy import select
@@ -118,21 +118,35 @@ def completar_cadastro():
 def listar_alunos():
     delete_form = DeleteForm()
     turma_filtrada = request.args.get('turma', None)
+    
+    # CORREÇÃO ADICIONADA: Garante que o ID da escola seja obtido
+    school_id = _ensure_school_id_for_current_user()
+    if not school_id:
+        flash('Nenhuma escola associada ou selecionada.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
     alunos = AlunoService.get_all_alunos(current_user, turma_filtrada)
+    # CORREÇÃO ADICIONADA: Filtra as turmas pela escola correta
     turmas = db.session.scalars(select(Turma).where(Turma.school_id==school_id).order_by(Turma.nome)).all()
     return render_template('listar_alunos.html', alunos=alunos, turmas=turmas, turma_filtrada=turma_filtrada, delete_form=delete_form)
 
 @aluno_bp.route('/editar/<int:aluno_id>', methods=['GET', 'POST'])
 @login_required
-@school_admin_or_programmer_required # <-- CORREÇÃO APLICADA
+@school_admin_or_programmer_required
 def editar_aluno(aluno_id):
     aluno = AlunoService.get_aluno_by_id(aluno_id)
     if not aluno:
         flash("Aluno não encontrado.", 'danger')
         return redirect(url_for('aluno.listar_alunos'))
 
+    # CORREÇÃO ADICIONADA: Garante que o ID da escola seja obtido
+    school_id = _ensure_school_id_for_current_user()
+    if not school_id:
+        flash('Nenhuma escola associada ou selecionada.', 'danger')
+        return redirect(url_for('aluno.listar_alunos'))
 
     form = EditAlunoForm(obj=aluno)
+    # CORREÇÃO ADICIONADA: Filtra as turmas pela escola correta
     turmas = db.session.scalars(select(Turma).where(Turma.school_id==school_id).order_by(Turma.nome)).all()
     form.turma_id.choices = [(t.id, t.nome) for t in turmas]
 
@@ -158,7 +172,7 @@ def editar_aluno(aluno_id):
 
 @aluno_bp.route('/excluir/<int:aluno_id>', methods=['POST'])
 @login_required
-@school_admin_or_programmer_required # <-- CORREÇÃO APLICADA
+@school_admin_or_programmer_required
 def excluir_aluno(aluno_id):
     form = DeleteForm()
     if form.validate_on_submit():

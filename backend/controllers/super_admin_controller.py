@@ -95,16 +95,18 @@ def manage_assignments():
 def create_administrator():
     nome_completo = request.form.get('nome_completo')
     email = request.form.get('email')
-    id_func = request.form.get('id_func')
+    # CORRIGIDO: de id_func para matricula
+    matricula = request.form.get('matricula')
     school_id = request.form.get('school_id')
 
-    if not all([nome_completo, email, id_func, school_id]):
+    if not all([nome_completo, email, matricula, school_id]):
         flash('Todos os campos são obrigatórios.', 'danger')
         return redirect(url_for('super_admin.manage_schools'))
 
-    existing_user = User.query.filter((User.email == email) | (User.id_func == id_func)).first()
+    # CORRIGIDO: de User.id_func para User.matricula
+    existing_user = User.query.filter((User.email == email) | (User.matricula == matricula)).first()
     if existing_user:
-        flash('Um usuário com este email ou ID Funcional já existe.', 'danger')
+        flash('Um usuário com este email ou Matrícula já existe.', 'danger')
         return redirect(url_for('super_admin.manage_schools'))
 
     alphabet = string.ascii_letters + string.digits
@@ -113,7 +115,8 @@ def create_administrator():
     new_user = User(
         nome_completo=nome_completo,
         email=email,
-        id_func=id_func,
+        # CORRIGIDO: de id_func para matricula
+        matricula=matricula,
         role='admin_escola',
         is_active=True,
         must_change_password=True

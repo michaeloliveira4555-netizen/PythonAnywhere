@@ -18,32 +18,32 @@ class UserService:
     
     @staticmethod
     def pre_register_user(data):
-        id_func = data.get('id_func')
+        matricula = data.get('matricula')
         role = data.get('role')
 
-        if not id_func or not role:
-            return False, "ID Funcional e Função são obrigatórios."
+        if not matricula or not role:
+            return False, "Matrícula e Função são obrigatórios."
 
-        if db.session.execute(select(User).filter_by(id_func=id_func)).scalar_one_or_none():
-            return False, f"O usuário com ID Funcional '{id_func}' já existe."
+        if db.session.execute(select(User).filter_by(matricula=matricula)).scalar_one_or_none():
+            return False, f"O usuário com Matrícula '{matricula}' já existe."
 
         try:
-            new_user = User(id_func=id_func, role=role, is_active=False)
+            new_user = User(matricula=matricula, role=role, is_active=False)
             db.session.add(new_user)
             db.session.commit()
-            return True, f"Usuário {id_func} pré-cadastrado com sucesso como {role}."
+            return True, f"Usuário {matricula} pré-cadastrado com sucesso como {role}."
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Erro no pré-cadastro: {e}")
             return False, "Erro ao pré-cadastrar usuário."
 
     @staticmethod
-    def batch_pre_register_users(id_funcs, role, school_id):
+    def batch_pre_register_users(matriculas, role, school_id):
         novos_usuarios_count = 0
         usuarios_existentes_count = 0
         
-        for id_func in id_funcs:
-            user = db.session.scalar(select(User).filter_by(id_func=id_func))
+        for matricula in matriculas:
+            user = db.session.scalar(select(User).filter_by(matricula=matricula))
             if user:
                 usuarios_existentes_count += 1
                 existing_assignment = db.session.scalar(
@@ -54,14 +54,14 @@ class UserService:
                 continue
             
             try:
-                new_user = User(id_func=id_func, role=role, is_active=False)
+                new_user = User(matricula=matricula, role=role, is_active=False)
                 db.session.add(new_user)
                 db.session.flush()
                 db.session.add(UserSchool(user_id=new_user.id, school_id=school_id, role=role))
                 novos_usuarios_count += 1
             except Exception as e:
                 db.session.rollback()
-                current_app.logger.error(f"Erro no pré-cadastro em lote para {id_func}: {e}")
+                current_app.logger.error(f"Erro no pré-cadastro em lote para {matricula}: {e}")
                 return False, 0, 0
 
         try:
@@ -83,10 +83,11 @@ class UserService:
         if not user or not school:
             return False, "Usuário ou escola não encontrados."
 
-        # --- CORREÇÃO ADICIONADA AQUI ---
-        # Garante que o papel principal do usuário seja atualizado para consistência.
+        # PROTEÇÃO ADICIONADA: Impede a alteração de funções de utilizadores essenciais
+        if user.username in ['super_admin', 'programador']:
+            return False, f"Não é permitido alterar a função ou vincular o usuário '{user.username}' a uma escola."
+
         user.role = role
-        # --- FIM DA CORREÇÃO ---
 
         existing_assignment = db.session.execute(
             select(UserSchool).filter_by(user_id=user_id, school_id=school_id)
@@ -100,7 +101,7 @@ class UserService:
         
         try:
             db.session.commit()
-            return True, f"Função de '{role}' atribuída com sucesso a {user.nome_completo or user.id_func} na escola {school.nome}."
+            return True, f"Função de '{role}' atribuída com sucesso a {user.nome_completo or user.matricula} na escola {school.nome}."
         except IntegrityError:
             db.session.rollback()
             return False, "Ocorreu um erro de integridade. A atribuição pode já existir."
@@ -109,6 +110,11 @@ class UserService:
     def remove_school_role(user_id, school_id):
         if not user_id or not school_id:
             return False, "ID do usuário e ID da escola são obrigatórios."
+        
+        # PROTEÇÃO ADICIONADA: Impede a desvinculação de utilizadores essenciais
+        user = db.session.get(User, user_id)
+        if user and user.username in ['super_admin', 'programador']:
+            return False, f"Não é permitido remover o vínculo escolar do usuário '{user.username}'."
 
         assignment = db.session.execute(
             select(UserSchool).filter_by(user_id=user_id, school_id=school_id)
@@ -141,13 +147,13 @@ class UserService:
         if not user:
             return False, "Usuário não encontrado."
         
-        if user.role in ['super_admin', 'programador']:
+        if user.role in ['super_admin', 'programador'] or user.username in ['super_admin', 'programador']:
             return False, "Não é permitido excluir um Super Admin ou Programador."
 
         try:
             db.session.delete(user)
             db.session.commit()
-            return True, f"Usuário '{user.nome_completo or user.id_func}' foi excluído permanentemente."
+            return True, f"Usuário '{user.nome_completo or user.matricula}' foi excluído permanentemente."
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Erro ao excluir usuário: {e}")
