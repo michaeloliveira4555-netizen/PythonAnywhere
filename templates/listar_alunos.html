@@ -62,7 +62,8 @@
                 <tbody>
                     {% for aluno in alunos %}
                     <tr>
-                        <td data-label="Matrícula">{{ aluno.matricula }}</td>
+                        {# --- CORREÇÃO APLICADA AQUI --- #}
+                        <td data-label="Matrícula">{{ aluno.user.matricula if aluno.user else 'N/A' }}</td>
                         <td data-label="Nome">{{ aluno.user.nome_completo or aluno.user.username }}</td>
                         <td data-label="Turma">{{ aluno.turma.nome if aluno.turma else 'Sem Turma' }}</td>
                         <td data-label="Email">{{ aluno.user.email }}</td>

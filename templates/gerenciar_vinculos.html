@@ -50,7 +50,7 @@
                         <th>Turma</th>
                         <th>Disciplina</th>
                         <th>Ciclo</th>
-                        <th>Instrutor Vinculado</th>
+                        <th>Instrutores Vinculados</th>
                         <th class="text-right">Ações</th>
                     </tr>
                 </thead>
@@ -61,9 +61,14 @@
                         <td data-label="Disciplina">{{ vinculo.disciplina.materia }}</td>
                         <td data-label="Ciclo">{{ vinculo.disciplina.ciclo.nome if vinculo.disciplina.ciclo else 'N/A' }}</td>
                         <td data-label="Instrutor">
-                            {% if vinculo.instrutor_1 and vinculo.instrutor_1.user %}
-                                {{ vinculo.instrutor_1.user.nome_completo or vinculo.instrutor_1.user.username }}
-                            {% else %}
+                            {# --- CORREÇÃO PARA MOSTRAR AMBOS OS INSTRUTORES --- #}
+                            {% if vinculo.instrutor_1 %}
+                                <div><strong>1:</strong> {{ vinculo.instrutor_1.user.nome_completo or vinculo.instrutor_1.user.username }}</div>
+                            {% endif %}
+                            {% if vinculo.instrutor_2 %}
+                                <div><strong>2:</strong> {{ vinculo.instrutor_2.user.nome_completo or vinculo.instrutor_2.user.username }}</div>
+                            {% endif %}
+                            {% if not vinculo.instrutor_1 and not vinculo.instrutor_2 %}
                                 <span style="color: #aaa;">Não atribuído</span>
                             {% endif %}
                         </td>

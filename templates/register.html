@@ -42,6 +42,13 @@
                        placeholder="Digite seu nome de guerra"
                        value="{{ form_data.get('nome_de_guerra', '') }}" required>
             </div>
+            {# --- NOVO CAMPO OPM ADICIONADO AQUI --- #}
+            <div class="form-group" id="opm-group">
+                <label for="opm">Sua OPM (Unidade):</label>
+                <input type="text" id="opm" name="opm" class="form-control"
+                       placeholder="Ex: 1º RPMon, CRPO/FN, etc."
+                       value="{{ form_data.get('opm', '') }}">
+            </div>
             <div class="form-group">
                 <label for="email">Seu E-mail (Ex: nome.sobrenome@bm.rs.gov.br):</label>
                 <input type="email" id="email" name="email" class="form-control" placeholder="Digite seu e-mail completo" value="{{ form_data.get('email', '') }}" required>
@@ -78,6 +85,24 @@
                 if (vis2) vis2.addEventListener(evt, sync);
             });
             form.addEventListener('submit', sync);
+
+            // --- NOVO SCRIPT PARA MOSTRAR/ESCONDER OPM ---
+            const roleSelect = document.getElementById('role');
+            const opmGroup = document.getElementById('opm-group');
+            const opmInput = document.getElementById('opm');
+
+            function toggleOpmField() {
+                if (roleSelect.value === 'aluno') {
+                    opmGroup.style.display = 'block';
+                    opmInput.required = true;
+                } else {
+                    opmGroup.style.display = 'none';
+                    opmInput.required = false;
+                }
+            }
+            roleSelect.addEventListener('change', toggleOpmField);
+            // Executa na inicialização
+            toggleOpmField();
         })();
         </script>
          <div class="auth-link" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">

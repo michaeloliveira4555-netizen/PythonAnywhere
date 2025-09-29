@@ -52,18 +52,21 @@ def school_admin_or_programmer_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# --- FUNÇÃO CORRIGIDA ---
 def can_view_management_pages_required(f):
-    """Permite acesso de visualização para Admins e Instrutores."""
+    """Permite acesso de visualização para Admins, Instrutores e Alunos."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
             return redirect(url_for('auth.login'))
         user_role = getattr(current_user, 'role', None)
-        if user_role not in ['super_admin', 'programador', 'admin_escola', 'instrutor']:
+        # Papel 'aluno' foi adicionado à lista de permissões
+        if user_role not in ['super_admin', 'programador', 'admin_escola', 'instrutor', 'aluno']:
             flash('Você não tem permissão para acessar esta página.', 'danger')
             return redirect(url_for('main.dashboard'))
         return f(*args, **kwargs)
     return decorated_function
+# --- FIM DA CORREÇÃO ---
 
 def admin_or_programmer_required(f):
     @wraps(f)

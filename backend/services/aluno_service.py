@@ -11,6 +11,7 @@ from ..models.historico import HistoricoAluno
 from ..models.turma import Turma
 from ..models.disciplina import Disciplina
 from ..models.historico_disciplina import HistoricoDisciplina
+from ..models.user_school import UserSchool # Importar UserSchool
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timezone
@@ -46,21 +47,19 @@ class AlunoService:
         user = db.session.get(User, user_id)
         if not user:
             return False, "Usuário não encontrado."
-        matricula = user.matricula # Pega a matrícula do usuário
-
+        
         opm = data.get('opm')
         turma_id = data.get('turma_id')
         if turma_id == 0:
             turma_id = None
         funcao_atual = data.get('funcao_atual')
 
-        if not all([opm]): # Matrícula já vem do usuário
+        if not all([opm]):
             return False, "O campo OPM é obrigatório."
 
         try:
             foto_filename = _save_profile_picture(foto_perfil)
 
-            # CORREÇÃO: Removido o argumento 'matricula' que já não existe no modelo Aluno
             novo_aluno = Aluno(
                 user_id=user_id,
                 opm=opm,
@@ -96,24 +95,26 @@ class AlunoService:
             current_app.logger.error(f"Erro inesperado ao cadastrar aluno: {e}")
             return False, f"Erro ao cadastrar aluno: {str(e)}"
 
+    # --- FUNÇÃO CORRIGIDA ---
     @staticmethod
     def get_all_alunos(user, nome_turma=None):
-        stmt = select(Aluno).join(User).join(Turma)
+        stmt = select(Aluno).join(User)
 
+        # Filtra por escola, se o utilizador não for admin global
         if user.role not in ['super_admin', 'programador']:
             user_school_ids = [us.school_id for us in user.user_schools]
             if not user_school_ids:
                 return []
-            stmt = stmt.where(Turma.school_id.in_(user_school_ids))
-        else:
-            stmt = stmt.where(User.role != 'super_admin')
-
+            stmt = stmt.join(UserSchool, User.id == UserSchool.user_id).where(UserSchool.school_id.in_(user_school_ids))
+        
+        # Filtra por turma, se especificado
         if nome_turma:
-            stmt = stmt.where(Turma.nome == nome_turma)
+            stmt = stmt.join(Turma).where(Turma.nome == nome_turma)
 
-        stmt = stmt.order_by(User.username)
+        stmt = stmt.order_by(User.nome_completo)
 
         return db.session.scalars(stmt).all()
+    # --- FIM DA CORREÇÃO ---
 
     @staticmethod
     def get_aluno_by_id(aluno_id: int):
@@ -126,7 +127,6 @@ class AlunoService:
             return False, "Aluno não encontrado."
 
         nome_completo = data.get('nome_completo')
-        # A matrícula é atualizada no objeto User, não no Aluno
         matricula_nova = data.get('matricula')
         opm = data.get('opm')
         turma_id_val = data.get('turma_id')

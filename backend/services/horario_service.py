@@ -48,18 +48,20 @@ class HorarioService:
                 dia_idx = dias.index(aula.dia_semana)
                 periodo_idx = aula.periodo - 1
                 if 0 <= periodo_idx < 15 and 0 <= dia_idx < 7:
+                    can_see_details = HorarioService.can_edit_horario(aula, user)
+
                     instrutor_nome = "N/D"
                     if aula.instrutor and aula.instrutor.user:
                         instrutor_nome = aula.instrutor.user.nome_de_guerra or aula.instrutor.user.username
                     
                     aula_info = {
                         'id': aula.id,
-                        'materia': aula.disciplina.materia,
-                        'instrutor': instrutor_nome,
+                        'materia': aula.disciplina.materia if aula.status == 'confirmado' or can_see_details else 'Aguardando Aprovação',
+                        'instrutor': instrutor_nome if aula.status == 'confirmado' or can_see_details else None,
                         'duracao': aula.duracao,
                         'status': aula.status,
                         'is_disposicao': False,
-                        'can_edit': HorarioService.can_edit_horario(aula, user),
+                        'can_edit': can_see_details,
                     }
                     horario_matrix[periodo_idx][dia_idx] = aula_info
                     for i in range(1, aula.duracao):
@@ -102,6 +104,7 @@ class HorarioService:
             datas[dia_nome] = data_calculada.strftime('%d/%m')
         return datas
 
+    # --- FUNÇÃO MODIFICADA ---
     @staticmethod
     def get_edit_grid_context(pelotao, semana_id, ciclo_id, user):
         """Prepara todos os dados necessários para a tela de edição de horários."""
@@ -116,16 +119,23 @@ class HorarioService:
                 disciplinas_disponiveis.append({"id": d.id, "nome": d.materia})
         else:
             instrutor_id = user.instrutor_profile.id if user.instrutor_profile else 0
-            associacoes = db.session.scalars(
-                select(DisciplinaTurma).options(joinedload(DisciplinaTurma.disciplina))
-                .join(Disciplina).where(
+            
+            # **CORREÇÃO APLICADA AQUI**
+            # A consulta foi reescrita para selecionar diretamente as disciplinas,
+            # o que é mais fiável do que consultar as associações.
+            disciplinas_do_instrutor = db.session.scalars(
+                select(Disciplina)
+                .join(DisciplinaTurma, Disciplina.id == DisciplinaTurma.disciplina_id)
+                .where(
                     DisciplinaTurma.pelotao == pelotao,
                     Disciplina.ciclo_id == ciclo_id,
                     (DisciplinaTurma.instrutor_id_1 == instrutor_id) | (DisciplinaTurma.instrutor_id_2 == instrutor_id)
                 )
-            ).unique().all()
-            for a in associacoes:
-                disciplinas_disponiveis.append({"id": a.disciplina.id, "nome": a.disciplina.materia})
+                .order_by(Disciplina.materia)
+            ).all()
+
+            for d in disciplinas_do_instrutor:
+                disciplinas_disponiveis.append({"id": d.id, "nome": d.materia})
 
         todos_instrutores = [{"id": i.id, "nome": i.user.nome_de_guerra or i.user.username} for i in db.session.scalars(select(Instrutor).options(joinedload(Instrutor.user)).join(User).order_by(User.nome_de_guerra)).all()]
 
@@ -140,6 +150,7 @@ class HorarioService:
             'instrutor_logado_id': user.instrutor_profile.id if user.instrutor_profile else None,
             'datas_semana': HorarioService.get_datas_da_semana(semana)
         }
+    # --- FIM DA MODIFICAÇÃO ---
 
     @staticmethod
     def get_aula_details(horario_id, user):

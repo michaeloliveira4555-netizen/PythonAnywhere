@@ -95,7 +95,8 @@
                 </div>
             </div>
 
-            {# --- NOVO PAINEL DE ATIVIDADE RECENTE --- #}
+            {# --- CORREÇÃO APLICADA AQUI --- #}
+            {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
             <div class="info-panel">
                 <div class="panel-header">
                     <h4>Atividade Recente</h4>
@@ -120,6 +121,8 @@
                     {% endif %}
                 </div>
             </div>
+            {% endif %}
+            {# --- FIM DA CORREÇÃO --- #}
         </div>
     </div>
 </div>

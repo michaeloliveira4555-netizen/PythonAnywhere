@@ -1,146 +1,176 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+# backend/controllers/horario_controller.py
+
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_required, current_user
+from sqlalchemy import select, or_
+from datetime import date
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField
-from wtforms.validators import DataRequired, Optional, Email, Length
+from wtforms import HiddenField, SubmitField
+from wtforms.validators import DataRequired
 
-from backend.services.instrutor_service import InstrutorService
-from utils.decorators import school_admin_or_programmer_required, can_view_management_pages_required
-from backend.models.database import db
-from backend.models.user import User
-from backend.models.instrutor import Instrutor
-from backend.models.school import School
+from ..models.database import db
+from ..models.horario import Horario
+from ..models.disciplina import Disciplina
+from ..models.instrutor import Instrutor
+from ..models.disciplina_turma import DisciplinaTurma
+from ..models.semana import Semana
+from ..models.turma import Turma
+from ..models.ciclo import Ciclo
+from utils.decorators import admin_or_programmer_required, can_schedule_classes_required
+from ..services.horario_service import HorarioService
+from ..services.user_service import UserService
 
-instrutor_bp = Blueprint('instrutor', __name__, url_prefix='/instrutores')
+horario_bp = Blueprint('horario', __name__, url_prefix='/horario')
 
-POSTOS_CHOICES = [
-    ('Soldado PM', 'Soldado PM'),
-    ('2º Sargento PM', '2º Sargento PM'),
-    ('1º Sargento PM', '1º Sargento PM'),
-    ('1º Tenente PM', '1º Tenente PM'),
-    ('Capitão PM', 'Capitão PM'),
-    ('Major PM', 'Major PM'),
-    ('Tenente-Coronel PM', 'Tenente-Coronel PM'),
-    ('Coronel PM', 'Coronel PM'),
-    ('Outro', 'Outro'),
-]
+class AprovarHorarioForm(FlaskForm):
+    horario_id = HiddenField('Horário ID', validators=[DataRequired()])
+    action = HiddenField('Ação', validators=[DataRequired()])
+    submit = SubmitField('Enviar')
 
-class DeleteForm(FlaskForm):
-    submit = SubmitField('Excluir')
-
-class CadastroInstrutorForm(FlaskForm):
-    nome_completo = StringField('Nome completo', validators=[Optional(), Length(max=255)])
-    nome_de_guerra = StringField('Nome de guerra', validators=[Optional(), Length(max=255)])
-    matricula = StringField('Matrícula', validators=[DataRequired(), Length(max=64)])
-    email = StringField('E-mail', validators=[DataRequired(), Email()])
-    password = PasswordField('Senha', validators=[DataRequired(), Length(min=4)])
-    posto_graduacao_select = SelectField('Posto/Graduação', choices=POSTOS_CHOICES)
-    posto_graduacao_outro = StringField('Outro (especifique)', validators=[Optional(), Length(max=100)])
-    telefone = StringField('Telefone', validators=[Optional(), Length(max=30)])
-    is_rr = BooleanField('RR')
-    submit = SubmitField('Salvar')
-
-class EditarInstrutorForm(FlaskForm):
-    nome_completo = StringField('Nome completo', validators=[Optional(), Length(max=255)])
-    nome_de_guerra = StringField('Nome de guerra', validators=[Optional(), Length(max=255)])
-    posto_graduacao_select = SelectField('Posto/Graduação', choices=POSTOS_CHOICES)
-    posto_graduacao_outro = StringField('Outro (especifique)', validators=[Optional(), Length(max=100)])
-    telefone = StringField('Telefone', validators=[Optional(), Length(max=30)])
-    is_rr = BooleanField('RR')
-    submit = SubmitField('Salvar')
-
-def _resolve_school_id_for_user(user: User):
-    if user and getattr(user, 'user_schools', None):
-        for us in user.user_schools:
-            return us.school_id
-    sid = session.get('view_as_school_id')
-    if sid:
-        try:
-            return int(sid)
-        except Exception:
-            pass
-    return None
-
-def _ensure_school_id_for_current_user(role_required: str = 'instrutor'):
-    sid = _resolve_school_id_for_user(current_user)
-    if sid:
-        return sid
-    ids = [row[0] for row in db.session.execute(db.select(School.id)).all()]
-    return ids[0] if len(ids) == 1 else None
-
-@instrutor_bp.route('/')
+@horario_bp.route('/')
 @login_required
-@can_view_management_pages_required
-def listar_instrutores():
-    instrutores = InstrutorService.get_all_instrutores()
-    form = DeleteForm()
-    return render_template('listar_instrutores.html', instrutores=instrutores, form=form)
-
-@instrutor_bp.route('/cadastrar', methods=['GET', 'POST'])
-@login_required
-@school_admin_or_programmer_required
-def cadastrar_instrutor():
-    form = CadastroInstrutorForm()
-    if request.method == 'POST' and form.validate_on_submit():
-        school_id = _ensure_school_id_for_current_user('instrutor')
-        ok, msg = InstrutorService.create_full_instrutor(request.form.to_dict(flat=True), school_id)
-        flash(msg, 'success' if ok else 'danger')
-        if ok:
-            return redirect(url_for('instrutor.listar_instrutores'))
-    return render_template('cadastro_instrutor.html', form=form)
-
-@instrutor_bp.route('/editar/<int:instrutor_id>', methods=['GET', 'POST'])
-@login_required
-@school_admin_or_programmer_required
-def editar_instrutor(instrutor_id: int):
-    instr = InstrutorService.get_instrutor_by_id(instrutor_id)
-    if not instr:
-        flash('Instrutor não encontrado.', 'danger')
-        return redirect(url_for('instrutor.listar_instrutores'))
-    form = EditarInstrutorForm()
-    if request.method == 'POST' and form.validate_on_submit():
-        ok, msg = InstrutorService.update_instrutor(instrutor_id, request.form.to_dict(flat=True))
-        flash(msg, 'success' if ok else 'danger')
-        if ok:
-            return redirect(url_for('instrutor.listar_instrutores'))
-    else:
-        if instr and instr.user_id:
-            user = db.session.get(User, instr.user_id)
-            if user:
-                form.nome_completo.data = user.nome_completo or ''
-                form.nome_de_guerra.data = user.nome_de_guerra or ''
-        form.telefone.data = instr.telefone or ''
-        form.posto_graduacao_select.data = instr.posto_graduacao if instr.posto_graduacao in [c[0] for c in POSTOS_CHOICES] else 'Outro'
-        form.posto_graduacao_outro.data = '' if form.posto_graduacao_select.data != 'Outro' else (instr.posto_graduacao or '')
-        form.is_rr.data = bool(getattr(instr, 'is_rr', False))
-    return render_template('editar_instrutor.html', form=form, instrutor=instr)
-
-@instrutor_bp.route('/completar', methods=['GET', 'POST'])
-@login_required
-def completar_cadastro():
-    form = EditarInstrutorForm()
-    if request.method == 'POST' and form.validate_on_submit():
-        instrutor_profile = current_user.instrutor_profile
-        if not instrutor_profile:
-            flash("Perfil de instrutor não encontrado para completar.", "danger")
+def index():
+    if current_user.role == 'aluno':
+        if not current_user.aluno_profile or not current_user.aluno_profile.turma:
+            flash("Você não está matriculado em nenhuma turma. Contate a administração.", 'warning')
             return redirect(url_for('main.dashboard'))
         
-        ok, msg = InstrutorService.update_instrutor(instrutor_profile.id, request.form.to_dict(flat=True))
-        flash(msg, 'success' if ok else 'danger')
-        if ok:
+        turma_do_aluno = current_user.aluno_profile.turma
+        school_id = turma_do_aluno.school_id
+        turma_selecionada_nome = turma_do_aluno.nome
+        todas_as_turmas = [turma_do_aluno]
+    else:
+        school_id = UserService.get_current_school_id()
+        if not school_id:
+            flash("Nenhuma escola associada ou selecionada.", "warning")
             return redirect(url_for('main.dashboard'))
-            
-    return render_template('completar_cadastro_instrutor.html', form=form)
+        
+        todas_as_turmas = db.session.scalars(select(Turma).where(Turma.school_id == school_id).order_by(Turma.nome)).all()
+        turma_selecionada_nome = request.args.get('pelotao', session.get('ultima_turma_visualizada'))
+        
+        if not turma_selecionada_nome and todas_as_turmas:
+            turma_selecionada_nome = todas_as_turmas[0].nome
+        elif turma_selecionada_nome and turma_selecionada_nome not in [t.nome for t in todas_as_turmas]:
+             flash("Turma selecionada inválida.", "danger")
+             turma_selecionada_nome = todas_as_turmas[0].nome if todas_as_turmas else None
+
+    ciclo_selecionado_id = request.args.get('ciclo', session.get('ultimo_ciclo_horario', 1), type=int)
+    session['ultimo_ciclo_horario'] = ciclo_selecionado_id
+    
+    ciclos = db.session.scalars(select(Ciclo).order_by(Ciclo.id)).all()
+    
+    todas_as_semanas = []
+    if school_id:
+        todas_as_semanas = db.session.scalars(select(Semana).where(Semana.ciclo_id == ciclo_selecionado_id).order_by(Semana.data_inicio.desc())).all()
+    
+    semana_id = request.args.get('semana_id')
+    semana_selecionada = HorarioService.get_semana_selecionada(semana_id, ciclo_selecionado_id)
+    
+    horario_matrix = None
+    datas_semana = {}
+    if turma_selecionada_nome and semana_selecionada:
+        session['ultima_turma_visualizada'] = turma_selecionada_nome
+        horario_matrix = HorarioService.construir_matriz_horario(turma_selecionada_nome, semana_selecionada.id, current_user)
+        datas_semana = HorarioService.get_datas_da_semana(semana_selecionada)
+
+    can_schedule_in_this_turma = False
+    instrutor_turmas_vinculadas = [] # --- NOVA VARIÁVEL ---
+
+    if current_user.role in ['programador', 'admin_escola', 'super_admin']:
+        can_schedule_in_this_turma = True
+    elif current_user.role == 'instrutor' and current_user.instrutor_profile:
+        instrutor_id = current_user.instrutor_profile.id
+        
+        # --- LÓGICA ALTERADA PARA ENCONTRAR TODAS AS TURMAS VINCULADAS ---
+        pelotao_names = db.session.scalars(
+            select(DisciplinaTurma.pelotao).where(
+                or_(
+                    DisciplinaTurma.instrutor_id_1 == instrutor_id,
+                    DisciplinaTurma.instrutor_id_2 == instrutor_id
+                )
+            ).distinct()
+        ).all()
+        
+        if pelotao_names:
+            instrutor_turmas_vinculadas = db.session.scalars(
+                select(Turma).where(Turma.nome.in_(pelotao_names)).order_by(Turma.nome)
+            ).all()
+        
+        # Verifica se o instrutor tem vínculo com a turma atualmente selecionada
+        if turma_selecionada_nome in pelotao_names:
+            can_schedule_in_this_turma = True
+
+    return render_template('quadro_horario.html',
+                           horario_matrix=horario_matrix,
+                           pelotao_selecionado=turma_selecionada_nome,
+                           semana_selecionada=semana_selecionada,
+                           todas_as_turmas=todas_as_turmas,
+                           todas_as_semanas=todas_as_semanas,
+                           ciclos=ciclos,
+                           ciclo_selecionado=ciclo_selecionado_id,
+                           datas_semana=datas_semana,
+                           can_schedule_in_this_turma=can_schedule_in_this_turma,
+                           instrutor_turmas_vinculadas=instrutor_turmas_vinculadas) # Passa a nova variável
 
 
-@instrutor_bp.route('/excluir/<int:instrutor_id>', methods=['POST'])
+@horario_bp.route('/editar/<pelotao>/<int:semana_id>/<int:ciclo_id>')
 @login_required
-@school_admin_or_programmer_required
-def excluir_instrutor(instrutor_id: int):
-    form = DeleteForm()
-    if not form.validate_on_submit():
-        flash("Falha na validação do token CSRF.", "danger")
-        return redirect(url_for('instrutor.listar_instrutores'))
-    ok, msg = InstrutorService.delete_instrutor(instrutor_id)
-    flash(msg, 'success' if ok else 'danger')
-    return redirect(url_for('instrutor.listar_instrutores'))
+@can_schedule_classes_required
+def editar_horario_grid(pelotao, semana_id, ciclo_id):
+    semana = db.session.get(Semana, semana_id)
+    if not semana:
+        flash("Semana não encontrada.", "danger")
+        return redirect(url_for('horario.index'))
+
+    context_data = HorarioService.get_edit_grid_context(pelotao, semana_id, ciclo_id, current_user)
+    
+    if not context_data.get('success'):
+        flash(context_data.get('message', 'Erro ao carregar dados para edição.'), 'danger')
+        return redirect(url_for('horario.index'))
+
+    return render_template('editar_quadro_horario.html', **context_data)
+
+
+@horario_bp.route('/get-aula/<int:horario_id>')
+@login_required
+def get_aula_details(horario_id):
+    aula_details = HorarioService.get_aula_details(horario_id, current_user)
+    if not aula_details:
+        return jsonify({'success': False, 'message': 'Aula não encontrada ou acesso negado.'}), 404
+    
+    return jsonify({'success': True, **aula_details})
+
+
+@horario_bp.route('/salvar-aula', methods=['POST'])
+@login_required
+def salvar_aula():
+    data = request.json
+    success, message, status_code = HorarioService.save_aula(data, current_user)
+    return jsonify({'success': success, 'message': message}), status_code
+
+@horario_bp.route('/remover-aula', methods=['POST'])
+@login_required
+def remover_aula():
+    data = request.json
+    horario_id = data.get('horario_id')
+    success, message = HorarioService.remove_aula(horario_id, current_user)
+    
+    if success:
+        return jsonify({'success': True, 'message': message})
+    else:
+        return jsonify({'success': False, 'message': message}), 403
+
+@horario_bp.route('/aprovar', methods=['GET', 'POST'])
+@login_required
+@admin_or_programmer_required
+def aprovar_horarios():
+    form = AprovarHorarioForm()
+    if form.validate_on_submit():
+        horario_id = form.horario_id.data
+        action = form.action.data
+        success, message = HorarioService.aprovar_horario(horario_id, action)
+        flash(message, 'success' if success else 'danger')
+        return redirect(url_for('horario.aprovar_horarios'))
+        
+    aulas_pendentes = HorarioService.get_aulas_pendentes()
+    return render_template('aprovar_horarios.html', aulas_pendentes=aulas_pendentes, form=form)

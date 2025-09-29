@@ -9,18 +9,6 @@
     <form method="POST" action="{{ url_for('instrutor.completar_cadastro') }}">
       {{ form.hidden_tag() }}
 
-      {# No self-service, campos de usuário/senha/escola não aparecem #}
-
-      <div class="form-group">
-        <label for="especializacao">Especialização</label>
-        {{ form.especializacao(class="form-control", id="especializacao") }}
-      </div>
-
-      <div class="form-group">
-        <label for="formacao">Formação</label>
-        {{ form.formacao(class="form-control", id="formacao") }}
-      </div>
-
       <div class="form-row" style="display:flex; gap:1rem;">
         <div class="form-group" style="flex:1;">
           <label for="posto_graduacao_select">Posto/Graduação</label>
@@ -32,15 +20,9 @@
         </div>
       </div>
 
-      <div class="form-row" style="display:flex; gap:1rem;">
-        <div class="form-group" style="flex:1;">
+      <div class="form-group">
           <label for="telefone">Telefone</label>
           {{ form.telefone(class="form-control", id="telefone", placeholder="(xx) xxxxx-xxxx") }}
-        </div>
-        <div class="form-group" style="flex:1;">
-          <label for="credor">Credor</label>
-          {{ form.credor(class="form-control", id="credor") }}
-        </div>
       </div>
 
       <div class="form-group">
@@ -50,7 +32,7 @@
 
       <div class="form-actions" style="display:flex; gap:0.5rem;">
         {{ form.submit(class="btn btn-primary") }}
-        <a href="{{ url_for('instrutor.listar_instrutores') }}" class="btn btn-secondary">Cancelar</a>
+        <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">Cancelar</a>
       </div>
     </form>
   </div>

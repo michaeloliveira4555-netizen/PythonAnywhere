@@ -35,7 +35,7 @@
 
             {% for row_idx in range(15) %}
                 {% if (current_user.role in ['admin', 'programador']) or
-                      (row_idx < 12) or 
+                      (row_idx < 12) or
                       (row_idx == 12 and semana_selecionada.mostrar_periodo_13) or
                       (row_idx == 13 and semana_selecionada.mostrar_periodo_14) or
                       (row_idx == 14 and semana_selecionada.mostrar_periodo_15) %}
@@ -186,6 +186,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const weekendTable = document.getElementById('weekend-table');
     const weekendToggle = document.getElementById('weekend-toggle');
 
+    // **NOVO**: Adiciona esta linha para obter o token CSRF
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
     function openModal(config) {
         modalForm.reset();
         modalHorarioIdInput.value = config.horario_id || '';
@@ -233,7 +236,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const id = target.dataset.id;
         const slot = target.closest('.schedule-slot');
 
-        if (!slot) return; 
+        if (!slot) return;
 
         if (action === 'add') {
             openModal({ dia: slot.dataset.dia, periodo: slot.dataset.periodo });
@@ -243,7 +246,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (confirm('Tem certeza que deseja remover esta aula?')) {
                 fetch('/horario/remover-aula', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    // **CORREÇÃO APLICADA AQUI**
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
                     body: JSON.stringify({ horario_id: id })
                 })
                 .then(res => res.json())
@@ -285,7 +292,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         fetch('/horario/salvar-aula', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            // **CORREÇÃO APLICADA AQUI**
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
             body: JSON.stringify(payload)
         })
         .then(res => res.json())

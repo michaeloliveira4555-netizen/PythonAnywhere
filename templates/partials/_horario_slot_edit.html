@@ -10,7 +10,9 @@
             <div class="slot-content {% if aula.status == 'pendente' %}pendente{% endif %}">
                 <div class="slot-info">
                     <div class="disciplina-title">{{ aula.materia }}</div>
+                    {% if aula.instrutor %}
                     <div class="instrutor-name">{{ aula.instrutor }}</div>
+                    {% endif %}
                 </div>
 
                 {% if aula.can_edit %}

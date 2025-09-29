@@ -25,31 +25,39 @@ class HistoricoService:
         stmt = select(HistoricoAluno).where(HistoricoAluno.aluno_id == aluno_id).order_by(HistoricoAluno.data_inicio.desc())
         return db.session.scalars(stmt).all()
 
+    # --- FUNÇÃO MODIFICADA E REAPROVEITADA ---
     @staticmethod
-    def avaliar_aluno(historico_id: int, form_data: dict):
+    def avaliar_aluno(historico_id: int, form_data: dict, from_admin: bool = False):
         """Lança ou atualiza as notas de um aluno em uma disciplina e calcula a média final."""
         registro = db.session.get(HistoricoDisciplina, historico_id)
         if not registro:
             return False, "Registro de matrícula não encontrado.", None
 
         try:
+            # Converte para float, tratando campos vazios como None
             nota_p1 = float(form_data.get('nota_p1')) if form_data.get('nota_p1') else None
             nota_p2 = float(form_data.get('nota_p2')) if form_data.get('nota_p2') else None
-            nota_rec = float(form_data.get('nota_rec')) if form_data.get('nota_rec') else None
+            
+            # A nota de recuperação só é editável pelo admin
+            nota_rec = None
+            if from_admin:
+                nota_rec = float(form_data.get('nota_rec')) if form_data.get('nota_rec') else None
+                registro.nota_rec = nota_rec
 
             registro.nota_p1 = nota_p1
             registro.nota_p2 = nota_p2
-            registro.nota_rec = nota_rec
 
+            # Lógica de cálculo da média final
             if nota_p1 is not None and nota_p2 is not None:
                 mpd = (nota_p1 + nota_p2) / 2
-                if mpd < 7.0 and nota_rec is not None:
+                # A recuperação só é considerada se a média for inferior a 7 e a nota de rec. existir
+                if from_admin and mpd < 7.0 and nota_rec is not None:
                     mfd = (nota_p1 + nota_p2 + nota_rec) / 3
                     registro.nota = round(mfd, 3)
                 else:
                     registro.nota = round(mpd, 3)
             else:
-                registro.nota = None
+                registro.nota = None # Se faltar uma das notas, a média fica nula
 
             db.session.commit()
             return True, "Avaliação salva com sucesso.", registro.aluno_id

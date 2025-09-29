@@ -2,12 +2,18 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import login_user, logout_user, login_required
 from flask_wtf import FlaskForm
+from sqlalchemy import select
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired
 
 from ..models.database import db
 from ..models.user import User
 from ..models.user_school import UserSchool
+from ..models.instrutor import Instrutor
+from ..models.aluno import Aluno
+# --- NOVAS IMPORTAÇÕES NECESSÁRIAS ---
+from ..models.disciplina import Disciplina
+from ..models.historico_disciplina import HistoricoDisciplina
 from utils.validators import validate_email, validate_password_strength
 from ..services.password_reset_service import PasswordResetService
 
@@ -29,9 +35,14 @@ def register():
         password = request.form.get('password')
         password2 = request.form.get('password2')
         role = request.form.get('role')
+        opm = request.form.get('opm')
 
         if not role:
             flash('Por favor, selecione sua função (Aluno ou Instrutor).', 'danger')
+            return render_template('register.html', form_data=request.form)
+
+        if role == 'aluno' and not opm:
+            flash('O campo OPM é obrigatório para alunos.', 'danger')
             return render_template('register.html', form_data=request.form)
 
         if not validate_email(email):
@@ -70,6 +81,28 @@ def register():
         user.username = matricula
         user.set_password(password)
         user.is_active = True
+        
+        # --- LÓGICA DE CRIAÇÃO DE PERFIL E MATRÍCULA AUTOMÁTICA ---
+        if role == 'instrutor' and not user.instrutor_profile:
+            new_instrutor_profile = Instrutor(user_id=user.id)
+            db.session.add(new_instrutor_profile)
+        elif role == 'aluno' and not user.aluno_profile:
+            # 1. Cria o perfil do aluno
+            new_aluno_profile = Aluno(user_id=user.id, opm=opm)
+            db.session.add(new_aluno_profile)
+            db.session.flush() # Garante que o perfil do aluno tenha um ID
+
+            # 2. Encontra a escola do aluno
+            user_school_link = db.session.scalar(select(UserSchool).where(UserSchool.user_id == user.id))
+            if user_school_link:
+                school_id = user_school_link.school_id
+                # 3. Encontra todas as disciplinas dessa escola
+                disciplinas_da_escola = db.session.scalars(select(Disciplina).where(Disciplina.school_id == school_id)).all()
+                # 4. Matricula o aluno em cada disciplina
+                for disciplina in disciplinas_da_escola:
+                    nova_matricula = HistoricoDisciplina(aluno_id=new_aluno_profile.id, disciplina_id=disciplina.id)
+                    db.session.add(nova_matricula)
+        # --- FIM DA CORREÇÃO ---
         
         db.session.commit()
 
@@ -143,7 +176,6 @@ def set_new_with_token():
             flash(message, 'danger')
             return render_template('set_new_with_token.html', form_data=request.form)
         
-        # O PasswordResetService não precisa ser alterado se internamente ele busca o user pela matricula
         user = PasswordResetService.consume_with_user_and_raw_token(matricula, raw_token)
         if not user:
             flash('Token inválido, expirado ou dados incorretos.', 'danger')

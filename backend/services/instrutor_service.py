@@ -63,7 +63,7 @@ class InstrutorService:
                 nome_completo=nome_completo or None,
                 nome_de_guerra=nome_de_guerra or None,
                 matricula=matricula,
-                is_active=True  # <-- CORREÇÃO APLICADA AQUI
+                is_active=True
             )
             user.set_password(password)
             db.session.add(user)
@@ -92,7 +92,41 @@ class InstrutorService:
             db.session.rollback()
             current_app.logger.exception("Erro geral ao criar instrutor")
             return False, f"Ocorreu um erro inesperado ao criar o instrutor."
-    
+
+    # --- FUNÇÃO NOVA ADICIONADA AQUI ---
+    @staticmethod
+    def create_profile_for_user(user_id: int, data: dict):
+        """Cria um perfil de Instrutor para um usuário já existente."""
+        user = db.session.get(User, user_id)
+        if not user:
+            return False, "Utilizador não encontrado."
+        
+        if user.instrutor_profile:
+            return False, "Este utilizador já possui um perfil de instrutor."
+
+        try:
+            posto_sel = (data.get('posto_graduacao_select') or '').strip()
+            posto_outro = (data.get('posto_graduacao_outro') or '').strip()
+            posto = posto_outro if (posto_sel == 'Outro' and posto_outro) else (posto_sel or None)
+            telefone = (data.get('telefone') or '').strip() or None
+            is_rr = str(data.get('is_rr') or '').lower() in ('sim', 'true', '1', 'on')
+
+            # Cria o novo perfil
+            new_profile = Instrutor(
+                user_id=user_id,
+                posto_graduacao=posto,
+                telefone=telefone,
+                is_rr=is_rr
+            )
+            db.session.add(new_profile)
+            db.session.commit()
+            return True, "Perfil de instrutor completado com sucesso."
+
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.exception("Erro ao criar perfil de instrutor para utilizador existente")
+            return False, "Ocorreu um erro inesperado ao salvar o perfil."
+            
     @staticmethod
     def get_instrutor_by_id(instrutor_id: int):
         return db.session.get(Instrutor, instrutor_id)

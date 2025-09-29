@@ -4,13 +4,9 @@
             {% if aula.is_disposicao %}disposicao{% endif %}
             {% if aula.status == 'pendente' %}pendente{% endif %}">
             
-            {% if aula.status == 'pendente' %}
-                <div class="disciplina-title" style="font-style: italic; color: #a16207;">Aguardando Aprovação</div>
-            {% else %}
-                <div class="disciplina-title">{{ aula.materia }}</div>
-                {% if aula.instrutor %}
-                <div class="instrutor-name">{{ aula.instrutor }}</div>
-                {% endif %}
+            <div class="disciplina-title">{{ aula.materia }}</div>
+            {% if aula.instrutor %}
+            <div class="instrutor-name">{{ aula.instrutor }}</div>
             {% endif %}
         </div>
     </td>

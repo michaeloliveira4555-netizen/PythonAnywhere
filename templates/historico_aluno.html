@@ -19,10 +19,60 @@
 <div class="content-header" style="margin-top: 2rem;">
     <h2>Notas por Disciplina</h2>
 </div>
+
 <div class="disciplinas-grid">
     {% for registro in historico_disciplinas %}
     <div class="disciplina-card">
-        </div>
+        {# --- CORREÇÃO: Formulário para cada disciplina --- #}
+        <form method="POST" action="{{ url_for('historico.avaliar_aluno_disciplina', historico_id=registro.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="disciplina-header">
+                <h4>{{ registro.disciplina.materia }}</h4>
+                <span class="status-badge status-{{ registro.status|lower }}">{{ registro.status|title }}</span>
+            </div>
+
+            <div class="disciplina-body">
+                <div class="notas-grid">
+                    <div class="nota-item">
+                        <label for="nota_p1_{{ registro.id }}" class="nota-label">Nota P1</label>
+                        <input type="number" step="0.01" min="0" max="10" 
+                               name="nota_p1" id="nota_p1_{{ registro.id }}" 
+                               class="form-control nota-input" 
+                               value="{{ registro.nota_p1 if registro.nota_p1 is not none else '' }}"
+                               {% if not is_own_profile %}readonly{% endif %}>
+                    </div>
+                    <div class="nota-item">
+                        <label for="nota_p2_{{ registro.id }}" class="nota-label">Nota P2</label>
+                        <input type="number" step="0.01" min="0" max="10"
+                               name="nota_p2" id="nota_p2_{{ registro.id }}"
+                               class="form-control nota-input"
+                               value="{{ registro.nota_p2 if registro.nota_p2 is not none else '' }}"
+                               {% if not is_own_profile %}readonly{% endif %}>
+                    </div>
+                    <div class="nota-item">
+                        <label for="nota_rec_{{ registro.id }}" class="nota-label">Recuperação</label>
+                        <input type="number" step="0.01" min="0" max="10"
+                               name="nota_rec" id="nota_rec_{{ registro.id }}"
+                               class="form-control nota-input"
+                               value="{{ registro.nota_rec if registro.nota_rec is not none else '' }}"
+                               {% if not current_user.role in ['super_admin', 'programador', 'admin_escola'] %}readonly{% endif %}>
+                    </div>
+                </div>
+            </div>
+
+            <div class="disciplina-footer">
+                <span class="media-final-label">Média Final na Disciplina</span>
+                <span class="media-final-valor-disciplina">{{ "%.3f"|format(registro.nota) if registro.nota is not none else 'N/A' }}</span>
+                {# O botão de salvar só aparece para o próprio aluno ou para o admin #}
+                {% if is_own_profile or current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
+                    <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+    {% else %}
+    <p>Nenhuma disciplina encontrada no seu histórico.</p>
     {% endfor %}
 </div>
 
@@ -102,7 +152,87 @@
 {% endif %}
 
 <style>
-/* ... estilos existentes ... */
+/* Estilos para a grelha de disciplinas */
+.disciplinas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+.disciplina-card {
+    background-color: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
+}
+.disciplina-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+.disciplina-header h4 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0;
+}
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.status-cursando { background-color: #eff6ff; color: #1d4ed8; }
+.status-aprovado { background-color: #dcfce7; color: #166534; }
+.status-reprovado { background-color: #fef2f2; color: #991b1b; }
+
+.disciplina-body {
+    padding: 1.5rem;
+}
+.notas-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    text-align: center;
+}
+.nota-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.nota-label {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+}
+.nota-input {
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-align: center;
+    padding: 0.5rem;
+}
+
+.disciplina-footer {
+    margin-top: auto;
+    padding: 1rem 1.5rem;
+    background-color: #f8fafc;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+.media-final-label {
+    font-weight: 600;
+}
+.media-final-valor-disciplina {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--color-primary);
+}
+
 .timeline { border-left: 3px solid var(--color-border); margin-left: 1rem; padding-left: 1.5rem; }
 .timeline-item { position: relative; margin-bottom: 2rem; }
 .timeline-item::before { content: ''; position: absolute; left: -1.5rem; top: 0.5rem; transform: translateX(-45%); width: 15px; height: 15px; background-color: var(--color-white); border: 3px solid var(--color-primary); border-radius: 50%; }
@@ -115,13 +245,11 @@
 </style>
 
 <script>
-// ... script de cálculo de notas existente ...
-
 function prepareAddModal() {
     const form = document.getElementById('atividadeForm');
     form.action = "{{ url_for('historico.adicionar_atividade', aluno_id=aluno.id) }}";
     document.getElementById('atividadeModalLabel').textContent = 'Adicionar Novo Registro';
-    form.reset(); // Limpa o formulário
+    form.reset();
 }
 
 function prepareEditModal(id, tipo, descricao, data) {
@@ -129,7 +257,6 @@ function prepareEditModal(id, tipo, descricao, data) {
     form.action = `/historico/atividade/editar/${id}`;
     document.getElementById('atividadeModalLabel').textContent = 'Editar Registro de Atividade';
     
-    // Preenche o formulário com os dados do evento
     form.querySelector('#tipo').value = tipo;
     form.querySelector('#descricao').value = descricao;
     form.querySelector('#data_inicio').value = data;
