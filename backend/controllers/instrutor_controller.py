@@ -5,7 +5,7 @@ from wtforms import StringField, PasswordField, BooleanField, SubmitField, Selec
 from wtforms.validators import DataRequired, Optional, Email, Length
 
 from backend.services.instrutor_service import InstrutorService
-from utils.decorators import school_admin_or_programmer_required
+from utils.decorators import school_admin_or_programmer_required, can_view_management_pages_required
 from backend.models.database import db
 from backend.models.user import User
 from backend.models.instrutor import Instrutor
@@ -70,7 +70,7 @@ def _ensure_school_id_for_current_user(role_required: str = 'instrutor'):
 
 @instrutor_bp.route('/')
 @login_required
-@school_admin_or_programmer_required
+@can_view_management_pages_required
 def listar_instrutores():
     instrutores = InstrutorService.get_all_instrutores()
     form = DeleteForm()

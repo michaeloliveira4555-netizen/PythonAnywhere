@@ -17,7 +17,6 @@
                 Todos os Alunos
             {% endif %}
         </h3>
-        {# --- CORREÇÃO APLICADA AQUI --- #}
         {% if current_user.role in ['programador', 'admin_escola'] %}
         <div class="header-actions">
             <a href="{{ url_for('main.pre_cadastro', role='aluno') }}" class="btn btn-info">

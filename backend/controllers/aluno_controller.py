@@ -2,7 +2,6 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
-
 from sqlalchemy import select
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
@@ -13,8 +12,7 @@ from ..models.database import db
 from ..services.aluno_service import AlunoService
 from ..models.user import User
 from ..models.turma import Turma
-from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required
-
+from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required, can_view_management_pages_required
 
 aluno_bp = Blueprint('aluno', __name__, url_prefix='/aluno')
 
@@ -25,13 +23,9 @@ class AlunoProfileForm(FlaskForm):
     turma_id = SelectField('Turma / Pelotão', coerce=int, validators=[Optional()])
     submit = SubmitField('Salvar Perfil')
 
-
 class DeleteForm(FlaskForm):
     pass
 
-# =========================
-# Helpers
-# =========================
 def _resolve_school_id_for_user(user: User):
     if user and getattr(user, 'user_schools', None):
         for us in user.user_schools:
@@ -39,8 +33,6 @@ def _resolve_school_id_for_user(user: User):
     return None
 
 def _ensure_school_id_for_current_user(role_required: str = "aluno"):
-    """Garante school_id para o usuário logado.
-    Ordem: vínculo existente -> sessão -> única escola (cria vínculo automático)."""
     from ..models.school import School
     from ..models.user_school import UserSchool
     sid = _resolve_school_id_for_user(current_user)
@@ -49,7 +41,6 @@ def _ensure_school_id_for_current_user(role_required: str = "aluno"):
     sid = session.get('view_as_school_id')
     if sid:
         return int(sid)
-    # única escola no sistema -> cria vínculo e usa
     ids = [row[0] for row in db.session.execute(db.select(School.id)).all()]
     if len(ids) == 1:
         only_id = ids[0]
@@ -64,9 +55,6 @@ def _ensure_school_id_for_current_user(role_required: str = "aluno"):
                 db.session.commit()
         return only_id
     return None
-
-
-
 
 class EditAlunoForm(FlaskForm):
     foto_perfil = FileField('Alterar Foto de Perfil', validators=[FileAllowed(['jpg', 'png', 'jpeg'], 'Apenas imagens!')])
@@ -85,7 +73,6 @@ class EditAlunoForm(FlaskForm):
         ('Motorista 2', 'Motorista 2'), ('Telefonista 1', 'Telefonista 1'), ('Telefonista 2', 'Telefonista 2')
     ], validators=[Optional()])
     submit = SubmitField('Atualizar Perfil')
-
 
 @aluno_bp.route('/completar-cadastro', methods=['GET', 'POST'])
 @login_required
@@ -111,22 +98,19 @@ def completar_cadastro():
             flash(message, 'danger')
     return render_template('cadastro_aluno.html', form=form, turmas=turmas)
 
-
 @aluno_bp.route('/listar')
 @login_required
-@admin_or_programmer_required
+@can_view_management_pages_required
 def listar_alunos():
     delete_form = DeleteForm()
     turma_filtrada = request.args.get('turma', None)
     
-    # CORREÇÃO ADICIONADA: Garante que o ID da escola seja obtido
     school_id = _ensure_school_id_for_current_user()
     if not school_id:
         flash('Nenhuma escola associada ou selecionada.', 'danger')
         return redirect(url_for('main.dashboard'))
 
     alunos = AlunoService.get_all_alunos(current_user, turma_filtrada)
-    # CORREÇÃO ADICIONADA: Filtra as turmas pela escola correta
     turmas = db.session.scalars(select(Turma).where(Turma.school_id==school_id).order_by(Turma.nome)).all()
     return render_template('listar_alunos.html', alunos=alunos, turmas=turmas, turma_filtrada=turma_filtrada, delete_form=delete_form)
 
@@ -139,14 +123,12 @@ def editar_aluno(aluno_id):
         flash("Aluno não encontrado.", 'danger')
         return redirect(url_for('aluno.listar_alunos'))
 
-    # CORREÇÃO ADICIONADA: Garante que o ID da escola seja obtido
     school_id = _ensure_school_id_for_current_user()
     if not school_id:
         flash('Nenhuma escola associada ou selecionada.', 'danger')
         return redirect(url_for('aluno.listar_alunos'))
 
     form = EditAlunoForm(obj=aluno)
-    # CORREÇÃO ADICIONADA: Filtra as turmas pela escola correta
     turmas = db.session.scalars(select(Turma).where(Turma.school_id==school_id).order_by(Turma.nome)).all()
     form.turma_id.choices = [(t.id, t.nome) for t in turmas]
 

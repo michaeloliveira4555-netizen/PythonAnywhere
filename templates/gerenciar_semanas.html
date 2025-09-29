@@ -61,6 +61,26 @@
                         {{ add_form.data_fim(class="form-control") }}
                     </div>
                 </div>
+
+                <div class="visibility-options">
+                    <div class="period-group">
+                        <strong>Períodos Extras:</strong>
+                        <label class="checkbox-item">{{ add_form.mostrar_periodo_13() }} 13º</label>
+                        <label class="checkbox-item">{{ add_form.mostrar_periodo_14() }} 14º</label>
+                        <label class="checkbox-item">{{ add_form.mostrar_periodo_15() }} 15º</label>
+                    </div>
+                    <div class="weekend-container">
+                        <div class="weekend-group">
+                            <label class="checkbox-item">{{ add_form.mostrar_sabado(data_target="periodos_sabado") }} Habilitar Sábado</label>
+                            {{ add_form.periodos_sabado(class="form-control period-input", placeholder="Nº Períodos", disabled=True) }}
+                        </div>
+                        <div class="weekend-group">
+                            <label class="checkbox-item">{{ add_form.mostrar_domingo(data_target="periodos_domingo") }} Habilitar Domingo</label>
+                            {{ add_form.periodos_domingo(class="form-control period-input", placeholder="Nº Períodos", disabled=True) }}
+                        </div>
+                    </div>
+                </div>
+
                 <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">+ Adicionar Semana ao Ciclo</button>
             </form>
             
@@ -105,25 +125,34 @@
 </div>
 
 <style>
-.management-grid {
-    display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: 2rem;
-    align-items: start;
-}
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+.visibility-options { display: flex; flex-wrap: wrap; gap: 1rem 2rem; align-items: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--color-border); }
+.period-group { display: flex; align-items: center; gap: 1rem; }
+.checkbox-item { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+.weekend-container { display: flex; flex-wrap: wrap; gap: 1.5rem; }
+.weekend-group { display: flex; align-items: center; gap: 0.5rem; }
+.period-input { width: 120px; }
+.management-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; align-items: start; }
 .ciclos-list { display: flex; flex-direction: column; gap: 0.5rem; }
-.ciclo-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem;
-    border-radius: 6px;
-    transition: background-color 0.2s;
-}
+.ciclo-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-radius: 6px; transition: background-color 0.2s; }
 .ciclo-item.active { background-color: var(--color-primary-light); }
 .ciclo-item.active .ciclo-name { color: white; font-weight: bold; }
 .ciclo-item:hover { background-color: #f1f5f9; }
 .ciclo-name { text-decoration: none; color: inherit; flex-grow: 1; }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('input[type="checkbox"][data-target]').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const targetInput = document.querySelector(`input[name="${this.dataset.target}"]`);
+            targetInput.disabled = !this.checked;
+            if (!this.checked) {
+                targetInput.value = '';
+            }
+        });
+    });
+});
+</script>
 
 {% endblock %}

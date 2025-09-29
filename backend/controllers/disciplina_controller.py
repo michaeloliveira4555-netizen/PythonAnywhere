@@ -12,7 +12,7 @@ from ..models.disciplina import Disciplina
 from ..models.ciclo import Ciclo
 from ..services.disciplina_service import DisciplinaService
 from ..services.user_service import UserService
-from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required
+from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required, can_view_management_pages_required
 
 disciplina_bp = Blueprint('disciplina', __name__, url_prefix='/disciplina')
 
@@ -27,7 +27,7 @@ class DeleteForm(FlaskForm):
 
 @disciplina_bp.route('/')
 @login_required
-@admin_or_programmer_required
+@can_view_management_pages_required
 def listar_disciplinas():
     school_id = UserService.get_current_school_id()
     if not school_id:

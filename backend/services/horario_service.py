@@ -14,7 +14,6 @@ from ..models.disciplina_turma import DisciplinaTurma
 from ..models.semana import Semana
 from ..models.turma import Turma
 from ..models.user import User
-from ..models.ciclo import Ciclo
 
 
 class HorarioService:
@@ -77,7 +76,6 @@ class HorarioService:
             return db.session.get(Semana, int(semana_id_str))
         
         today = date.today()
-        # CORREÇÃO APLICADA: Usa-se ciclo_id em vez de ciclo
         semana_atual = db.session.scalars(
             select(Semana).where(
                 Semana.ciclo_id == ciclo_id,
@@ -113,7 +111,6 @@ class HorarioService:
         
         disciplinas_disponiveis = []
         if is_admin:
-            # CORREÇÃO APLICADA: Filtra por ciclo_id
             disciplinas_do_ciclo = db.session.scalars(select(Disciplina).where(Disciplina.ciclo_id == ciclo_id).order_by(Disciplina.materia)).all()
             for d in disciplinas_do_ciclo:
                 disciplinas_disponiveis.append({"id": d.id, "nome": d.materia})
@@ -168,7 +165,17 @@ class HorarioService:
             disciplina_id = int(data['disciplina_id'])
             duracao = int(data.get('duracao', 1))
             is_admin = user.role in ['super_admin', 'programador', 'admin_escola']
-            instrutor_id = int(data['instrutor_id']) if is_admin and data.get('instrutor_id') else (user.instrutor_profile.id if user.instrutor_profile else None)
+            
+            instrutor_id = None
+            if is_admin:
+                instrutor_id_from_form = data.get('instrutor_id')
+                if not instrutor_id_from_form:
+                    return False, 'Como administrador, você deve selecionar um instrutor.', 400
+                instrutor_id = int(instrutor_id_from_form)
+            else:
+                if not user.instrutor_profile:
+                    return False, 'O seu perfil de instrutor não foi encontrado.', 403
+                instrutor_id = user.instrutor_profile.id
 
             if not instrutor_id:
                 return False, 'Instrutor não especificado.', 400

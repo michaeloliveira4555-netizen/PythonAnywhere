@@ -33,7 +33,7 @@
             <select name="disciplina_id" id="disciplina_id" class="form-control" onchange="this.form.submit()">
                 <option value="">Todas as Disciplinas</option>
                 {% for d in disciplinas %}
-                <option value="{{ d.id }}" {% if d.id == disciplina_filtrada_id %}selected{% endif %}>{{ d.materia }} (Ciclo {{ d.ciclo }})</option>
+                <option value="{{ d.id }}" {% if d.id == disciplina_filtrada_id %}selected{% endif %}>{{ d.materia }} ({{ d.ciclo.nome }})</option>
                 {% endfor %}
             </select>
         </div>
@@ -59,7 +59,7 @@
                     <tr>
                         <td data-label="Turma">{{ vinculo.pelotao }}</td>
                         <td data-label="Disciplina">{{ vinculo.disciplina.materia }}</td>
-                        <td data-label="Ciclo">{{ vinculo.disciplina.ciclo }}</td>
+                        <td data-label="Ciclo">{{ vinculo.disciplina.ciclo.nome if vinculo.disciplina.ciclo else 'N/A' }}</td>
                         <td data-label="Instrutor">
                             {% if vinculo.instrutor_1 and vinculo.instrutor_1.user %}
                                 {{ vinculo.instrutor_1.user.nome_completo or vinculo.instrutor_1.user.username }}

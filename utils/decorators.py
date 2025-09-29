@@ -27,10 +27,20 @@ def super_admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def can_schedule_classes_required(f):
+    """Permite acesso para Programador, Admin da Escola e Instrutor."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for('auth.login'))
+        user_role = getattr(current_user, 'role', None)
+        if user_role not in ['programador', 'admin_escola', 'instrutor']:
+            flash('Você não tem permissão para agendar aulas.', 'danger')
+            return redirect(url_for('main.dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 def school_admin_or_programmer_required(f):
-    """
-    NOVO DECORADOR: Permite acesso apenas para Admin da Escola e Programador.
-    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
@@ -38,6 +48,19 @@ def school_admin_or_programmer_required(f):
         user_role = getattr(current_user, 'role', None)
         if user_role not in ['programador', 'admin_escola']:
             flash('Você não tem permissão para executar esta ação.', 'danger')
+            return redirect(url_for('main.dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def can_view_management_pages_required(f):
+    """Permite acesso de visualização para Admins e Instrutores."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for('auth.login'))
+        user_role = getattr(current_user, 'role', None)
+        if user_role not in ['super_admin', 'programador', 'admin_escola', 'instrutor']:
+            flash('Você não tem permissão para acessar esta página.', 'danger')
             return redirect(url_for('main.dashboard'))
         return f(*args, **kwargs)
     return decorated_function

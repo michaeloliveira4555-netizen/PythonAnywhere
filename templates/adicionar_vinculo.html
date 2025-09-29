@@ -24,7 +24,7 @@
             <select id="ciclo_select" class="form-control" required>
                 <option value="" selected disabled>-- Selecione um ciclo primeiro --</option>
                 {% for ciclo in ciclos %}
-                <option value="{{ ciclo }}">Ciclo {{ ciclo }}</option>
+                <option value="{{ ciclo.id }}">{{ ciclo.nome }}</option>
                 {% endfor %}
             </select>
         </div>

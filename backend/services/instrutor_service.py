@@ -1,3 +1,5 @@
+# backend/services/instrutor_service.py
+
 from flask import current_app
 from sqlalchemy import select, delete, or_
 from sqlalchemy.exc import IntegrityError
@@ -48,26 +50,25 @@ class InstrutorService:
             if not password:
                 return False, "O campo Senha é obrigatório."
 
-            # VERIFICAÇÕES PRÉVIAS PARA ERROS CLAROS
             if db.session.scalar(select(User).where(User.matricula == matricula)):
                 return False, f"A Matrícula '{matricula}' já está em uso por outro usuário."
             if db.session.scalar(select(User).where(User.email == email)):
                 return False, f"O e-mail '{email}' já está em uso por outro usuário."
 
-            # CRIAÇÃO DO USUÁRIO
+            # CRIAÇÃO DO USUÁRIO COM STATUS ATIVO
             user = User(
                 email=email,
                 username=email,
                 role='instrutor',
                 nome_completo=nome_completo or None,
                 nome_de_guerra=nome_de_guerra or None,
-                matricula=matricula
+                matricula=matricula,
+                is_active=True  # <-- CORREÇÃO APLICADA AQUI
             )
             user.set_password(password)
             db.session.add(user)
             db.session.flush()
 
-            # CRIAÇÃO DO PERFIL DE INSTRUTOR (sem os campos removidos)
             instrutor = Instrutor(
                 user_id=user.id,
                 posto_graduacao=posto,
@@ -98,7 +99,7 @@ class InstrutorService:
 
     @staticmethod
     def get_all_instrutores():
-        stmt = select(Instrutor).order_by(Instrutor.id)
+        stmt = select(Instrutor).join(User).order_by(User.nome_completo)
         return db.session.scalars(stmt).all()
 
     @staticmethod
@@ -114,6 +115,8 @@ class InstrutorService:
             posto_sel = (data.get('posto_graduacao_select') or '').strip()
             posto_outro = (data.get('posto_graduacao_outro') or '').strip()
             posto = posto_outro if (posto_sel == 'Outro' and posto_outro) else (posto_sel or None)
+            
+            is_rr = str(data.get('is_rr') or '').lower() in ('sim', 'true', '1', 'on')
 
             user = db.session.get(User, instrutor.user_id)
             if user:
@@ -122,6 +125,7 @@ class InstrutorService:
 
             instrutor.telefone = (telefone or None)
             instrutor.posto_graduacao = posto
+            instrutor.is_rr = is_rr
 
             db.session.commit()
             return True, "Instrutor atualizado com sucesso."

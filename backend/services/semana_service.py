@@ -1,88 +1,46 @@
+# backend/services/semana_service.py
+
 from ..models.database import db
 from ..models.semana import Semana
+from ..models.horario import Horario
 from sqlalchemy import select
-from datetime import datetime, timedelta
-import re
+from datetime import datetime
 from flask import current_app
 
 class SemanaService:
     @staticmethod
-    def get_all_semanas():
-        return db.session.scalars(select(Semana).order_by(Semana.data_inicio.desc())).all()
+    def add_semana(data: dict):
+        """Cria uma nova semana a partir dos dados de um formulário."""
+        nome = data.get('nome')
+        data_inicio = data.get('data_inicio')
+        data_fim = data.get('data_fim')
+        ciclo_id = data.get('ciclo_id')
 
-    @staticmethod
-    def get_semana_by_id(semana_id: int):
-        return db.session.get(Semana, semana_id)
-
-    @staticmethod
-    def add_semana(nome: str, data_inicio_str: str, data_fim_str: str):
-        if not all([nome, data_inicio_str, data_fim_str]):
-            return False, 'Todos os campos são obrigatórios.'
+        if not all([nome, data_inicio, data_fim, ciclo_id]):
+            return False, 'Todos os campos, incluindo o ciclo, são obrigatórios.'
 
         try:
-            data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d').date()
-            data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d').date()
-        except ValueError:
-            return False, 'Formato de data inválido. Use AAAA-MM-DD.'
-
-        try:
-            nova_semana = Semana(nome=nome, data_inicio=data_inicio, data_fim=data_fim)
+            nova_semana = Semana(
+                nome=nome,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                ciclo_id=ciclo_id,
+                mostrar_periodo_13=data.get('mostrar_periodo_13', False),
+                mostrar_periodo_14=data.get('mostrar_periodo_14', False),
+                mostrar_periodo_15=data.get('mostrar_periodo_15', False),
+                mostrar_sabado=data.get('mostrar_sabado', False),
+                periodos_sabado=data.get('periodos_sabado') or 0,
+                mostrar_domingo=data.get('mostrar_domingo', False),
+                periodos_domingo=data.get('periodos_domingo') or 0
+            )
             db.session.add(nova_semana)
+            db.session.commit()
             return True, 'Nova semana cadastrada com sucesso!'
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Erro ao adicionar semana: {e}")
             return False, f"Erro ao adicionar semana: {str(e)}"
-
-    @staticmethod
-    def add_proxima_semana():
-        ultima_semana = db.session.scalars(select(Semana).order_by(Semana.data_fim.desc())).first()
-
-        if not ultima_semana:
-            return False, 'Para adicionar a "próxima semana", você precisa cadastrar a primeira semana manualmente.'
-
-        numeros = re.findall(r'\d+', ultima_semana.nome)
-        proximo_numero = int(numeros[-1]) + 1 if numeros else 1
-        novo_nome = f"Semana {proximo_numero}"
-
-        dias_para_proxima_segunda = (7 - ultima_semana.data_fim.weekday()) % 7
-        nova_data_inicio = ultima_semana.data_fim + timedelta(days=dias_para_proxima_segunda)
-        nova_data_fim = nova_data_inicio + timedelta(days=4) # De segunda a sexta
-
-        try:
-            nova_semana = Semana(nome=novo_nome, data_inicio=nova_data_inicio, data_fim=nova_data_fim)
-            db.session.add(nova_semana)
-            return True, f'"{novo_nome}" adicionada com sucesso!'
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Erro ao adicionar próxima semana: {e}")
-            return False, f"Erro ao adicionar próxima semana: {str(e)}"
-
-    @staticmethod
-    def update_semana(semana_id: int, nome: str, data_inicio_str: str, data_fim_str: str):
-        semana = db.session.get(Semana, semana_id)
-        if not semana:
-            return False, 'Semana não encontrada.'
-
-        if not all([nome, data_inicio_str, data_fim_str]):
-            return False, 'Todos os campos são obrigatórios.'
-
-        try:
-            data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d').date()
-            data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d').date()
-        except ValueError:
-            return False, 'Formato de data inválido. Use AAAA-MM-DD.'
-
-        try:
-            semana.nome = nome
-            semana.data_inicio = data_inicio
-            semana.data_fim = data_fim
-            return True, 'Semana atualizada com sucesso!'
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Erro ao atualizar semana: {e}")
-            return False, f"Erro ao atualizar semana: {str(e)}"
-
+            
     @staticmethod
     def delete_semana(semana_id: int):
         semana = db.session.get(Semana, semana_id)
@@ -90,7 +48,12 @@ class SemanaService:
             return False, 'Semana não encontrada.'
 
         try:
+            horarios_count = db.session.query(Horario).filter_by(semana_id=semana_id).count()
+            if horarios_count > 0:
+                return False, f'Não é possível excluir esta semana, pois existem {horarios_count} aulas agendadas nela.'
+                
             db.session.delete(semana)
+            db.session.commit()
             return True, 'Semana deletada com sucesso.'
         except Exception as e:
             db.session.rollback()

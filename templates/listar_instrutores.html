@@ -34,7 +34,9 @@
                         <th>Nome Completo</th>
                         <th>Posto/Graduação</th>
                         <th>E-mail</th>
+                        {% if current_user.role in ['programador', 'admin_escola'] %}
                         <th class="text-right">Ações</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -45,6 +47,7 @@
                         <td data-label="Nome Completo">{{ instrutor.user.nome_completo if instrutor.user else 'N/A' }}</td>
                         <td data-label="Posto/Graduação">{{ instrutor.posto_graduacao or 'N/D' }}</td>
                         <td data-label="Email">{{ instrutor.user.email if instrutor.user else 'N/A' }}</td>
+                        {% if current_user.role in ['programador', 'admin_escola'] %}
                         <td data-label="Ações" class="text-right">
                             <div class="btn-group">
                                 <a href="{{ url_for('instrutor.editar_instrutor', instrutor_id=instrutor.id) }}" class="btn btn-sm btn-warning">Editar</a>
@@ -54,6 +57,7 @@
                                 </form>
                             </div>
                         </td>
+                        {% endif %}
                     </tr>
                     {% endfor %}
                 </tbody>

@@ -40,7 +40,9 @@
                     <tr>
                         <th>Matéria</th>
                         <th>Carga Horária</th>
+                        {% if current_user.role in ['programador', 'admin_escola'] %}
                         <th class="text-right">Ações</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -48,19 +50,17 @@
                     <tr>
                         <td data-label="Matéria">{{ disciplina.materia }}</td>
                         <td data-label="Carga Horária">{{ disciplina.carga_horaria_prevista if disciplina.carga_horaria_prevista > 0 else 'N/D' }}h</td>
+                        {% if current_user.role in ['programador', 'admin_escola'] %}
                         <td data-label="Ações" class="text-right">
                             <div class="btn-group">
-                                {% if current_user.role in ['programador', 'admin_escola'] %}
                                 <a href="{{ url_for('disciplina.editar_disciplina', disciplina_id=disciplina.id) }}" class="btn btn-sm btn-warning">Gerenciar</a>
                                 <form method="POST" action="{{ url_for('disciplina.excluir_disciplina', disciplina_id=disciplina.id) }}" style="display: inline;" onsubmit="return confirm('⚠️ ATENÇÃO: Excluir esta disciplina irá:\n\n• Remover todas as associações com instrutores\n• Remover todas as aulas agendadas\n• Remover do histórico de todos os alunos\n\nEsta ação NÃO PODE ser desfeita!\n\nTem certeza que deseja continuar?');">
                                     {{ delete_form.hidden_tag() }}
                                     <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
                                 </form>
-                                {% else %}
-                                <span class="text-muted">Sem ações</span>
-                                {% endif %}
                             </div>
                         </td>
+                        {% endif %}
                     </tr>
                     {% endfor %}
                 </tbody>

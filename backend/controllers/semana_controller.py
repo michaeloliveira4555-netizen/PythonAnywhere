@@ -1,13 +1,12 @@
 # backend/controllers/semana_controller.py
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required
 from sqlalchemy import select
-from datetime import datetime, timedelta
-import re
+from datetime import datetime
 from flask_wtf import FlaskForm
 from wtforms import StringField, DateField, SubmitField, SelectField, BooleanField, IntegerField
-from wtforms.validators import DataRequired, Optional
+from wtforms.validators import DataRequired, Optional, NumberRange
 
 from ..models.database import db
 from ..models.semana import Semana
@@ -23,6 +22,14 @@ class AddSemanaForm(FlaskForm):
     data_inicio = DateField('Data de Início', validators=[DataRequired()])
     data_fim = DateField('Data de Fim', validators=[DataRequired()])
     ciclo_id = SelectField('Ciclo', coerce=int, validators=[DataRequired()])
+    # Campos adicionados para períodos extras e fins de semana
+    mostrar_periodo_13 = BooleanField('13º Período')
+    mostrar_periodo_14 = BooleanField('14º Período')
+    mostrar_periodo_15 = BooleanField('15º Período')
+    mostrar_sabado = BooleanField('Habilitar Sábado')
+    periodos_sabado = IntegerField('Períodos Sábado', validators=[Optional(), NumberRange(min=1, max=15)])
+    mostrar_domingo = BooleanField('Habilitar Domingo')
+    periodos_domingo = IntegerField('Períodos Domingo', validators=[Optional(), NumberRange(min=1, max=15)])
     submit_add = SubmitField('Adicionar Semana')
 
 class DeleteForm(FlaskForm):
@@ -33,7 +40,6 @@ class DeleteForm(FlaskForm):
 @admin_or_programmer_required
 def gerenciar_semanas():
     ciclo_selecionado_id = request.args.get('ciclo_id', type=int)
-    
     todos_os_ciclos = db.session.scalars(select(Ciclo).order_by(Ciclo.nome)).all()
 
     if not ciclo_selecionado_id and todos_os_ciclos:
@@ -67,15 +73,14 @@ def adicionar_semana():
     form.ciclo_id.choices = [(c.id, c.nome) for c in ciclos]
 
     if form.validate_on_submit():
-        success, message = SemanaService.add_semana(
-            nome=form.nome.data,
-            data_inicio_str=form.data_inicio.data.strftime('%Y-%m-%d'),
-            data_fim_str=form.data_fim.data.strftime('%Y-%m-%d'),
-            ciclo_id=form.ciclo_id.data
-        )
+        success, message = SemanaService.add_semana(form.data)
         flash(message, 'success' if success else 'danger')
     else:
-        flash('Erro no formulário. Verifique os dados inseridos.', 'danger')
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"Erro no campo '{getattr(form, field).label.text}': {error}", 'danger')
+        if not form.errors:
+            flash('Erro no formulário. Verifique os dados inseridos.', 'danger')
         
     return redirect(url_for('semana.gerenciar_semanas', ciclo_id=form.ciclo_id.data))
 
@@ -123,7 +128,6 @@ def deletar_semana(semana_id):
     flash('Ocorreu um erro ao tentar deletar a semana.', 'danger')
     return redirect(url_for('semana.gerenciar_semanas'))
 
-
 @semana_bp.route('/ciclo/adicionar', methods=['POST'])
 @login_required
 @admin_or_programmer_required
@@ -139,7 +143,6 @@ def adicionar_ciclo():
     else:
         flash("O nome do ciclo não pode estar vazio.", "danger")
     return redirect(url_for('semana.gerenciar_semanas'))
-
 
 @semana_bp.route('/ciclo/deletar/<int:ciclo_id>', methods=['POST'])
 @login_required

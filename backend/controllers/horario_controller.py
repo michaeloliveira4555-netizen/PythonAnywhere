@@ -16,7 +16,7 @@ from ..models.disciplina_turma import DisciplinaTurma
 from ..models.semana import Semana
 from ..models.turma import Turma
 from ..models.ciclo import Ciclo
-from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required
+from utils.decorators import admin_or_programmer_required, can_schedule_classes_required
 from ..services.horario_service import HorarioService
 from ..services.user_service import UserService
 
@@ -61,7 +61,6 @@ def index():
     
     todas_as_semanas = []
     if school_id:
-        # CORREÇÃO APLICADA: Usa-se ciclo_id em vez de ciclo
         todas_as_semanas = db.session.scalars(select(Semana).where(Semana.ciclo_id == ciclo_selecionado_id).order_by(Semana.data_inicio.desc())).all()
     
     semana_id = request.args.get('semana_id')
@@ -87,14 +86,13 @@ def index():
 
 @horario_bp.route('/editar/<pelotao>/<int:semana_id>/<int:ciclo_id>')
 @login_required
-@school_admin_or_programmer_required
+@can_schedule_classes_required
 def editar_horario_grid(pelotao, semana_id, ciclo_id):
     semana = db.session.get(Semana, semana_id)
     if not semana:
         flash("Semana não encontrada.", "danger")
         return redirect(url_for('horario.index'))
 
-    # CORREÇÃO: Passa o ID do ciclo corretamente para o serviço
     context_data = HorarioService.get_edit_grid_context(pelotao, semana_id, ciclo_id, current_user)
     
     if not context_data.get('success'):
@@ -135,7 +133,7 @@ def remover_aula():
 
 @horario_bp.route('/aprovar', methods=['GET', 'POST'])
 @login_required
-@school_admin_or_programmer_required
+@admin_or_programmer_required
 def aprovar_horarios():
     form = AprovarHorarioForm()
     if form.validate_on_submit():

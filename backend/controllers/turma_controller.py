@@ -11,13 +11,11 @@ from wtforms.widgets import CheckboxInput, ListWidget
 from ..models.database import db
 from ..models.turma import Turma
 from ..models.aluno import Aluno
-# --- CORREÇÃO ADICIONADA AQUI ---
 from ..models.user import User 
 from ..models.user_school import UserSchool
-# --- FIM DA CORREÇÃO ---
 from ..services.turma_service import TurmaService
 from ..services.user_service import UserService 
-from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required
+from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required, can_view_management_pages_required
 
 turma_bp = Blueprint('turma', __name__, url_prefix='/turma')
 
@@ -40,7 +38,7 @@ class DeleteForm(FlaskForm):
 
 @turma_bp.route('/')
 @login_required
-@admin_or_programmer_required # Super Admin PODE ver
+@can_view_management_pages_required
 def listar_turmas():
     delete_form = DeleteForm()
     turmas = db.session.scalars(select(Turma).order_by(Turma.nome)).all()
@@ -48,7 +46,7 @@ def listar_turmas():
 
 @turma_bp.route('/<int:turma_id>')
 @login_required
-@admin_or_programmer_required # Super Admin PODE ver
+@can_view_management_pages_required
 def detalhes_turma(turma_id):
     turma = db.session.get(Turma, turma_id)
     if not turma:
@@ -63,7 +61,7 @@ def detalhes_turma(turma_id):
 
 @turma_bp.route('/<int:turma_id>/salvar-cargos', methods=['POST'])
 @login_required
-@school_admin_or_programmer_required # Super Admin NÃO PODE salvar
+@school_admin_or_programmer_required
 def salvar_cargos_turma(turma_id):
     form = TurmaCargoForm()
     if form.validate_on_submit():
@@ -75,7 +73,7 @@ def salvar_cargos_turma(turma_id):
 
 @turma_bp.route('/cadastrar', methods=['GET', 'POST'])
 @login_required
-@school_admin_or_programmer_required # Super Admin NÃO PODE cadastrar
+@school_admin_or_programmer_required
 def cadastrar_turma():
     form = TurmaForm()
     
@@ -102,7 +100,7 @@ def cadastrar_turma():
 
 @turma_bp.route('/editar/<int:turma_id>', methods=['GET', 'POST'])
 @login_required
-@school_admin_or_programmer_required # Super Admin NÃO PODE editar
+@school_admin_or_programmer_required
 def editar_turma(turma_id):
     turma = db.session.get(Turma, turma_id)
     if not turma:
@@ -126,7 +124,7 @@ def editar_turma(turma_id):
 
 @turma_bp.route('/excluir/<int:turma_id>', methods=['POST'])
 @login_required
-@school_admin_or_programmer_required # Super Admin NÃO PODE excluir
+@school_admin_or_programmer_required
 def excluir_turma(turma_id):
     form = DeleteForm()
     if form.validate_on_submit():
