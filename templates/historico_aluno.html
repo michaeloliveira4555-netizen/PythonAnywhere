@@ -1,19 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}Meu CTSP - {{ aluno.user.nome_completo or aluno.user.username }}{% endblock %}
+{% block title %}Minhas Notas - Meu CTSP{% endblock %}
 
 {% block content %}
 <div class="content-header">
-    <h1>Meu CTSP</h1>
+    <h1>Minhas Notas</h1>
     <p>Acompanhe suas notas e médias das disciplinas do Curso Técnico em Segurança Pública.</p>
 </div>
 
 <div class="media-final-curso-container">
-    <h3>Média Final do Curso</h3>
-    <div id="media-final-curso" class="media-final-valor">
-        {{ "%.3f"|format(media_final_curso) }}
+    <div class="stat-icon">🏆</div>
+    <div class="stat-info">
+        <span class="stat-number">{{ "%.3f"|format(media_final_curso) }}</span>
+        <span class="stat-label">Média Final do Curso</span>
     </div>
-    <p>Esta é a média de todas as disciplinas com notas já lançadas e salvas.</p>
+    <p class="stat-description">Esta é a média de todas as disciplinas com notas já lançadas e salvas.</p>
 </div>
 
 <div class="content-header" style="margin-top: 2rem;">
@@ -22,14 +23,13 @@
 
 <div class="disciplinas-grid">
     {% for registro in historico_disciplinas %}
-    <div class="disciplina-card">
-        {# --- CORREÇÃO: Formulário para cada disciplina --- #}
-        <form method="POST" action="{{ url_for('historico.avaliar_aluno_disciplina', historico_id=registro.id) }}">
+    <div class="disciplina-card status-{{ registro.status|lower }}">
+        <form method="POST" action="{{ url_for('historico.avaliar_aluno_disciplina', historico_id=registro.id) }}" class="disciplina-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="disciplina-header">
                 <h4>{{ registro.disciplina.materia }}</h4>
-                <span class="status-badge status-{{ registro.status|lower }}">{{ registro.status|title }}</span>
+                <span class="status-badge">{{ registro.status|title }}</span>
             </div>
 
             <div class="disciplina-body">
@@ -62,9 +62,10 @@
             </div>
 
             <div class="disciplina-footer">
-                <span class="media-final-label">Média Final na Disciplina</span>
-                <span class="media-final-valor-disciplina">{{ "%.3f"|format(registro.nota) if registro.nota is not none else 'N/A' }}</span>
-                {# O botão de salvar só aparece para o próprio aluno ou para o admin #}
+                <div class="media-final-display">
+                    <span class="media-final-label">Média Final na Disciplina</span>
+                    <span class="media-final-valor-disciplina" data-output-for="{{ registro.id }}">{{ "%.3f"|format(registro.nota) if registro.nota is not none else 'N/A' }}</span>
+                </div>
                 {% if is_own_profile or current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
                     <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
                 {% endif %}
@@ -76,88 +77,26 @@
     {% endfor %}
 </div>
 
-<div class="content-header" style="margin-top: 2rem; display: flex; justify-content: space-between; align-items: center;">
-    <div>
-        <h2>Histórico de Atividades</h2>
-        <p>Registros de atualizações do perfil, elogios, sanções e outras atividades.</p>
-    </div>
-    {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#atividadeModal" onclick="prepareAddModal()">
-        + Adicionar Atividade
-    </button>
-    {% endif %}
-</div>
-<div class="timeline">
-    {% for evento in historico_atividades %}
-    <div class="timeline-item">
-        <div class="timeline-time">{{ evento.data_inicio.strftime('%d/%m/%Y %H:%M') if evento.data_inicio else '' }}</div>
-        <div class="timeline-content">
-            <div class="timeline-header">
-                <strong>{{ evento.tipo }}</strong>
-                {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
-                <div class="timeline-actions">
-                    <button class="btn-icon" title="Editar" data-bs-toggle="modal" data-bs-target="#atividadeModal"
-                            onclick="prepareEditModal('{{ evento.id }}', '{{ evento.tipo }}', '{{ evento.descricao | e }}', '{{ evento.data_inicio.strftime('%Y-%m-%dT%H:%M') }}')">
-                        ✏️
-                    </button>
-                    <form method="POST" action="{{ url_for('historico.deletar_atividade', atividade_id=evento.id) }}" onsubmit="return confirm('Tem certeza que deseja remover este registro?');" style="display: inline;">
-                        <input type="hidden" name="csrf_token" value="{{ delete_form.csrf_token() }}">
-                        <input type="hidden" name="aluno_id" value="{{ aluno.id }}">
-                        <button type="submit" class="btn-icon" title="Excluir">🗑️</button>
-                    </form>
-                </div>
-                {% endif %}
-            </div>
-            <p>{{ evento.descricao }}</p>
-        </div>
-    </div>
-    {% else %}
-    <p style="color: var(--color-text-muted);">Nenhuma atividade registrada até o momento.</p>
-    {% endfor %}
-</div>
-
-{% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
-<div class="modal fade" id="atividadeModal" tabindex="-1" aria-labelledby="atividadeModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="atividadeModalLabel">Adicionar Registro de Atividade</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="atividadeForm" method="POST" action="">
-                <div class="modal-body">
-                    {{ form.hidden_tag() }}
-                    <input type="hidden" name="aluno_id" value="{{ aluno.id }}">
-                    <div class="form-group">
-                        {{ form.tipo.label }}
-                        {{ form.tipo(class="form-control") }}
-                    </div>
-                    <div class="form-group">
-                        {{ form.descricao.label }}
-                        {{ form.descricao(class="form-control") }}
-                    </div>
-                    <div class="form-group">
-                        {{ form.data_inicio.label }}
-                        {{ form.data_inicio(class="form-control") }}
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    {{ form.submit(class="btn btn-primary") }}
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-{% endif %}
-
 <style>
-/* Estilos para a grelha de disciplinas */
-.disciplinas-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+/* Estilos para o novo card de média final */
+.media-final-curso-container {
+    background: linear-gradient(135deg, var(--color-secondary), #3c4a5c);
+    color: white;
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-medium);
+    display: flex;
+    align-items: center;
     gap: 1.5rem;
 }
+.media-final-curso-container .stat-icon { font-size: 3rem; opacity: 0.8; }
+.media-final-curso-container .stat-number { font-size: 2.5rem; font-weight: 800; line-height: 1; }
+.media-final-curso-container .stat-label { font-size: 1.1rem; opacity: 0.9; }
+.media-final-curso-container .stat-description { margin: 0 0 0 auto; text-align: right; font-size: 0.9rem; opacity: 0.7; max-width: 250px; }
+
+
+/* Estilos para a grelha de disciplinas */
+.disciplinas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; }
 .disciplina-card {
     background-color: var(--color-white);
     border: 1px solid var(--color-border);
@@ -165,54 +104,24 @@
     box-shadow: var(--shadow-soft);
     display: flex;
     flex-direction: column;
+    border-left: 5px solid var(--color-info); /* Cor padrão para 'cursando' */
 }
-.disciplina-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--color-border);
-}
-.disciplina-header h4 {
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin: 0;
-}
-.status-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-.status-cursando { background-color: #eff6ff; color: #1d4ed8; }
-.status-aprovado { background-color: #dcfce7; color: #166534; }
-.status-reprovado { background-color: #fef2f2; color: #991b1b; }
+.disciplina-card.status-aprovado { border-left-color: var(--color-success); }
+.disciplina-card.status-reprovado { border-left-color: var(--color-danger); }
 
-.disciplina-body {
-    padding: 1.5rem;
-}
-.notas-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    text-align: center;
-}
-.nota-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-.nota-label {
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-}
-.nota-input {
-    font-size: 1.2rem;
-    font-weight: 700;
-    text-align: center;
-    padding: 0.5rem;
-}
+.disciplina-form { display: flex; flex-direction: column; height: 100%; }
+.disciplina-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid var(--color-border); }
+.disciplina-header h4 { font-size: 1.1rem; font-weight: 700; margin: 0; }
+.status-badge { padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+.disciplina-card.status-cursando .status-badge { background-color: #eff6ff; color: #1d4ed8; }
+.disciplina-card.status-aprovado .status-badge { background-color: #dcfce7; color: #166534; }
+.disciplina-card.status-reprovado .status-badge { background-color: #fef2f2; color: #991b1b; }
+
+.disciplina-body { padding: 1.5rem; }
+.notas-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; text-align: center; }
+.nota-item { display: flex; flex-direction: column; gap: 0.5rem; }
+.nota-label { font-size: 0.8rem; color: var(--color-text-muted); text-transform: uppercase; }
+.nota-input { font-size: 1.2rem; font-weight: 700; text-align: center; padding: 0.5rem; background-color: #f8fafc; }
 
 .disciplina-footer {
     margin-top: auto;
@@ -224,42 +133,37 @@
     align-items: center;
     gap: 1rem;
 }
-.media-final-label {
-    font-weight: 600;
-}
-.media-final-valor-disciplina {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--color-primary);
-}
-
-.timeline { border-left: 3px solid var(--color-border); margin-left: 1rem; padding-left: 1.5rem; }
-.timeline-item { position: relative; margin-bottom: 2rem; }
-.timeline-item::before { content: ''; position: absolute; left: -1.5rem; top: 0.5rem; transform: translateX(-45%); width: 15px; height: 15px; background-color: var(--color-white); border: 3px solid var(--color-primary); border-radius: 50%; }
-.timeline-time { font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); margin-bottom: 0.25rem; }
-.timeline-content { background-color: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border); }
-.timeline-header { display: flex; justify-content: space-between; align-items: center; }
-.timeline-header strong { font-size: 1.1rem; }
-.timeline-actions { display: flex; gap: 0.5rem; }
-.timeline-content p { margin-top: 0.5rem; margin-bottom: 0; }
+.media-final-display { text-align: left; }
+.media-final-label { font-weight: 600; font-size: 0.9rem; }
+.media-final-valor-disciplina { font-size: 1.75rem; font-weight: 800; color: var(--color-primary); line-height: 1; }
 </style>
 
 <script>
-function prepareAddModal() {
-    const form = document.getElementById('atividadeForm');
-    form.action = "{{ url_for('historico.adicionar_atividade', aluno_id=aluno.id) }}";
-    document.getElementById('atividadeModalLabel').textContent = 'Adicionar Novo Registro';
-    form.reset();
-}
+document.addEventListener('DOMContentLoaded', function () {
+    // Função para calcular a média de uma disciplina em tempo real
+    function calcularMediaDisciplina(card) {
+        const notaP1Input = card.querySelector('input[name="nota_p1"]');
+        const notaP2Input = card.querySelector('input[name="nota_p2"]');
+        const mediaOutput = card.querySelector('.media-final-valor-disciplina');
 
-function prepareEditModal(id, tipo, descricao, data) {
-    const form = document.getElementById('atividadeForm');
-    form.action = `/historico/atividade/editar/${id}`;
-    document.getElementById('atividadeModalLabel').textContent = 'Editar Registro de Atividade';
-    
-    form.querySelector('#tipo').value = tipo;
-    form.querySelector('#descricao').value = descricao;
-    form.querySelector('#data_inicio').value = data;
-}
+        const notaP1 = parseFloat(notaP1Input.value);
+        const notaP2 = parseFloat(notaP2Input.value);
+
+        if (!isNaN(notaP1) && !isNaN(notaP2)) {
+            const media = (notaP1 + notaP2) / 2;
+            mediaOutput.textContent = media.toFixed(3);
+        } else {
+            mediaOutput.textContent = 'N/A';
+        }
+    }
+
+    // Adiciona o listener de evento para cada input de nota
+    document.querySelectorAll('.nota-input').forEach(input => {
+        input.addEventListener('input', function() {
+            const card = this.closest('.disciplina-card');
+            calcularMediaDisciplina(card);
+        });
+    });
+});
 </script>
 {% endblock %}

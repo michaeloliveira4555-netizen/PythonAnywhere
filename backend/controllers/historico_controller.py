@@ -3,14 +3,17 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
+from sqlalchemy import select
 from wtforms import StringField, TextAreaField, DateTimeLocalField, SubmitField, SelectField
 from wtforms.validators import DataRequired
 
 from ..models.database import db
 from ..models.historico_disciplina import HistoricoDisciplina
+from ..models.disciplina import Disciplina
+from ..models.turma import Turma
 from ..services.historico_service import HistoricoService
 from ..services.aluno_service import AlunoService
-from utils.decorators import admin_or_programmer_required
+from utils.decorators import admin_or_programmer_required, aluno_profile_required
 
 historico_bp = Blueprint('historico', __name__, url_prefix='/historico')
 
@@ -30,38 +33,66 @@ class AtividadeForm(FlaskForm):
 class DeleteForm(FlaskForm):
     pass # Apenas para o token CSRF
 
-@historico_bp.route('/aluno/<int:aluno_id>')
+# --- NOVAS ROTAS ADICIONADAS ---
+@historico_bp.route('/')
 @login_required
-def historico_aluno(aluno_id):
-    user_role = getattr(current_user, 'role', None)
-    is_admin = user_role in ['super_admin', 'programador', 'admin_escola']
-    is_own_profile = hasattr(current_user, 'aluno_profile') and current_user.aluno_profile and current_user.aluno_profile.id == aluno_id
+@aluno_profile_required
+def index():
+    """Página principal de seleção do 'Meu CTSP'."""
+    return render_template('meu_ctsp_index.html')
 
-    if not (is_admin or is_own_profile):
-        flash("Você não tem permissão para visualizar este histórico.", 'danger')
-        return redirect(url_for('main.dashboard'))
+@historico_bp.route('/sancoes')
+@login_required
+@aluno_profile_required
+def sancoes():
+    """Página para visualizar sanções (placeholder)."""
+    return render_template('sancoes.html')
 
+@historico_bp.route('/elogios')
+@login_required
+@aluno_profile_required
+def elogios():
+    """Página para visualizar elogios (placeholder)."""
+    return render_template('elogios.html')
+
+@historico_bp.route('/funcional')
+@login_required
+@aluno_profile_required
+def historico_funcional():
+    """Página para visualizar o histórico funcional (placeholder)."""
+    return render_template('historico_funcional.html')
+# --- FIM DAS NOVAS ROTAS ---
+
+@historico_bp.route('/minhas-notas') # Rota antiga renomeada
+@login_required
+@aluno_profile_required
+def minhas_notas():
+    aluno_id = current_user.aluno_profile.id
     aluno = AlunoService.get_aluno_by_id(aluno_id)
     if not aluno:
         flash("Aluno não encontrado.", 'danger')
         return redirect(url_for('main.dashboard'))
 
+    # Lógica de verificação e matrícula automática
+    if aluno.turma and aluno.turma.school:
+        school_id = aluno.turma.school.id
+        disciplinas_da_escola = db.session.scalars(select(Disciplina).where(Disciplina.school_id == school_id)).all()
+        matriculas_existentes = db.session.scalars(select(HistoricoDisciplina.disciplina_id).where(HistoricoDisciplina.aluno_id == aluno_id)).all()
+        for disciplina in disciplinas_da_escola:
+            if disciplina.id not in matriculas_existentes:
+                nova_matricula = HistoricoDisciplina(aluno_id=aluno.id, disciplina_id=disciplina.id)
+                db.session.add(nova_matricula)
+        db.session.commit()
+
     historico_disciplinas = HistoricoService.get_historico_disciplinas_for_aluno(aluno_id)
-    historico_atividades = HistoricoService.get_historico_atividades_for_aluno(aluno_id)
-    
     notas_finais = [h.nota for h in historico_disciplinas if h.nota is not None]
     media_final_curso = sum(notas_finais) / len(notas_finais) if notas_finais else 0.0
-
-    form = AtividadeForm()
-    delete_form = DeleteForm()
 
     return render_template('historico_aluno.html',
                            aluno=aluno,
                            historico_disciplinas=historico_disciplinas,
-                           historico_atividades=historico_atividades,
                            media_final_curso=media_final_curso,
-                           form=form,
-                           delete_form=delete_form)
+                           is_own_profile=True)
 
 
 @historico_bp.route('/avaliar/<int:historico_id>', methods=['POST'])
@@ -80,19 +111,16 @@ def avaliar_aluno_disciplina(historico_id):
         return redirect(url_for('main.dashboard'))
 
     form_data = request.form.to_dict()
-    success, message, aluno_id = HistoricoService.avaliar_aluno(historico_id, form_data)
+    success, message, aluno_id = HistoricoService.avaliar_aluno(historico_id, form_data, from_admin=is_admin)
 
     if success:
         flash(message, 'success')
     else:
         flash(message, 'danger')
 
-    if aluno_id:
-        return redirect(url_for('historico.historico_aluno', aluno_id=aluno_id))
-    else:
-        return redirect(url_for('main.dashboard'))
+    # Redireciona de volta para a página de notas
+    return redirect(url_for('historico.minhas_notas'))
 
-# --- ROTAS CORRIGIDAS E ADICIONADAS ---
 
 @historico_bp.route('/atividade/adicionar/<int:aluno_id>', methods=['POST'])
 @login_required
@@ -104,7 +132,7 @@ def adicionar_atividade(aluno_id):
         flash(message, 'success' if success else 'danger')
     else:
         flash('Erro de validação no formulário.', 'danger')
-    return redirect(url_for('historico.historico_aluno', aluno_id=aluno_id))
+    return redirect(url_for('historico.minhas_notas')) # Ajustar conforme a nova estrutura
 
 @historico_bp.route('/atividade/editar/<int:atividade_id>', methods=['POST'])
 @login_required
@@ -117,7 +145,7 @@ def editar_atividade(atividade_id):
         flash(message, 'success' if success else 'danger')
     else:
         flash('Erro de validação no formulário.', 'danger')
-    return redirect(url_for('historico.historico_aluno', aluno_id=aluno_id))
+    return redirect(url_for('historico.minhas_notas')) # Ajustar
 
 @historico_bp.route('/atividade/deletar/<int:atividade_id>', methods=['POST'])
 @login_required
@@ -130,4 +158,4 @@ def deletar_atividade(atividade_id):
         flash(message, 'success' if success else 'danger')
     else:
         flash('Falha na validação do token CSRF.', 'danger')
-    return redirect(url_for('historico.historico_aluno', aluno_id=aluno_id))
+    return redirect(url_for('historico.minhas_notas')) # Ajustar
