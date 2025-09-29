@@ -10,6 +10,7 @@ from wtforms.validators import DataRequired, Length, NumberRange
 from ..models.database import db
 from ..models.disciplina import Disciplina
 from ..models.ciclo import Ciclo
+from ..models.turma import Turma # --- NOVA IMPORTAÇÃO ---
 from ..services.disciplina_service import DisciplinaService
 from ..services.user_service import UserService
 from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required, can_view_management_pages_required
@@ -37,6 +38,10 @@ def listar_disciplinas():
     ciclo_selecionado_id = request.args.get('ciclo', session.get('ultimo_ciclo_disciplina', 1), type=int)
     session['ultimo_ciclo_disciplina'] = ciclo_selecionado_id
     
+    # --- LÓGICA DO FILTRO DE TURMA ADICIONADA ---
+    turma_selecionada_nome = request.args.get('turma', None)
+    turmas_disponiveis = db.session.scalars(select(Turma).where(Turma.school_id == school_id).order_by(Turma.nome)).all()
+
     query = select(Disciplina).where(
         Disciplina.school_id == school_id,
         Disciplina.ciclo_id == ciclo_selecionado_id
@@ -44,10 +49,10 @@ def listar_disciplinas():
 
     disciplinas = db.session.scalars(query).all()
     
-    # --- LÓGICA DE CÁLCULO DE PROGRESSO ADICIONADA ---
     disciplinas_com_progresso = []
     for d in disciplinas:
-        progresso = DisciplinaService.get_dados_progresso(d)
+        # Passa a turma selecionada para o cálculo de progresso
+        progresso = DisciplinaService.get_dados_progresso(d, turma_selecionada_nome)
         disciplinas_com_progresso.append({
             'disciplina': d,
             'progresso': progresso
@@ -60,7 +65,9 @@ def listar_disciplinas():
                            disciplinas_com_progresso=disciplinas_com_progresso, 
                            delete_form=delete_form, 
                            ciclo_selecionado=ciclo_selecionado_id,
-                           ciclos=ciclos_disponiveis)
+                           ciclos=ciclos_disponiveis,
+                           turmas=turmas_disponiveis, # Passa as turmas para o template
+                           turma_selecionada=turma_selecionada_nome) # Passa a turma selecionada
 
 @disciplina_bp.route('/adicionar', methods=['GET', 'POST'])
 @login_required

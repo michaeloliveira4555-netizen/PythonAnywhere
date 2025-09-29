@@ -4,7 +4,7 @@ from collections import defaultdict
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from flask import current_app
-from datetime import date # --- NOVA IMPORTAÇÃO ---
+from datetime import date
 
 from ..models.database import db
 from ..models.disciplina import Disciplina
@@ -14,7 +14,7 @@ from ..models.aluno import Aluno
 from ..models.turma import Turma
 from ..models.ciclo import Ciclo
 from ..models.horario import Horario
-from ..models.semana import Semana # --- NOVA IMPORTAÇÃO ---
+from ..models.semana import Semana
 
 class DisciplinaService:
     @staticmethod
@@ -119,13 +119,16 @@ class DisciplinaService:
             
         return dict(sorted(disciplinas_agrupadas.items()))
 
-    # --- FUNÇÃO MODIFICADA PARA CONSIDERAR APENAS AULAS CONCLUÍDAS ---
+    # --- FUNÇÃO MODIFICADA PARA ACEITAR FILTRO DE PELOTÃO ---
     @staticmethod
-    def get_dados_progresso(disciplina):
-        """Calcula as horas agendadas, previstas e o percentual de conclusão de uma disciplina."""
+    def get_dados_progresso(disciplina, pelotao_nome=None):
+        """
+        Calcula as horas agendadas, previstas e o percentual de conclusão de uma disciplina,
+        opcionalmente filtrando por um pelotão específico.
+        """
         
         # A consulta agora junta com a tabela de semanas para filtrar pela data
-        total_concluido = db.session.scalar(
+        query = (
             select(func.sum(Horario.duracao))
             .join(Semana)
             .where(
@@ -133,7 +136,13 @@ class DisciplinaService:
                 Horario.status == 'confirmado',
                 Semana.data_fim < date.today() # Apenas aulas de semanas que já terminaram
             )
-        ) or 0
+        )
+        
+        # Adiciona o filtro de pelotão se ele for fornecido
+        if pelotao_nome:
+            query = query.where(Horario.pelotao == pelotao_nome)
+
+        total_concluido = db.session.scalar(query) or 0
         
         carga_horaria = disciplina.carga_horaria_prevista
         

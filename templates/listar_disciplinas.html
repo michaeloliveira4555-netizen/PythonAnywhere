@@ -8,23 +8,44 @@
     <p>Gerencie as matérias e seus respectivos instrutores por pelotão.</p>
 </div>
 
-<div class="ciclo-selector">
-    <strong>Ciclo:</strong>
-    <div class="filter-buttons">
-        {% for ciclo in ciclos %}
-        <a href="{{ url_for('disciplina.listar_disciplinas', ciclo=ciclo.id) }}" 
-           class="btn btn-sm {% if ciclo_selecionado == ciclo.id %}btn-warning{% else %}btn-secondary{% endif %}">
-            {{ ciclo.nome }}
-        </a>
-        {% endfor %}
-    </div>
+<div class="table-filters">
+    <form method="GET" action="{{ url_for('disciplina.listar_disciplinas') }}" id="filter-form" class="d-flex flex-wrap align-items-end gap-3">
+        <div class="filter-group">
+            <label for="ciclo_select"><strong>Ciclo:</strong></label>
+            <select name="ciclo" id="ciclo_select" class="form-control" onchange="this.form.submit()">
+                {% for ciclo in ciclos %}
+                <option value="{{ ciclo.id }}" {% if ciclo_selecionado == ciclo.id %}selected{% endif %}>
+                    {{ ciclo.nome }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label for="turma_select"><strong>Filtrar por Turma:</strong></label>
+            <select name="turma" id="turma_select" class="form-control" onchange="this.form.submit()">
+                <option value="">-- Todas as Turmas (Progresso Geral) --</option>
+                {% for t in turmas %}
+                <option value="{{ t.nome }}" {% if t.nome == turma_selecionada %}selected{% endif %}>{{ t.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        {% if turma_selecionada or request.args.get('ciclo') %}
+        <a href="{{ url_for('disciplina.listar_disciplinas') }}" class="btn btn-sm btn-danger">Limpar Filtros</a>
+        {% endif %}
+    </form>
 </div>
+
 
 <div class="table-container">
     <div class="table-header">
         <h3>
             {% set ciclo_atual = ciclos|selectattr('id', 'equalto', ciclo_selecionado)|first %}
             Disciplinas do {{ ciclo_atual.nome if ciclo_atual else 'Ciclo ' + ciclo_selecionado|string }}
+            {% if turma_selecionada %}
+                <small class="text-muted">| Turma: {{ turma_selecionada }}</small>
+            {% endif %}
         </h3>
         {% if current_user.role in ['programador', 'admin_escola'] %}
         <a href="{{ url_for('disciplina.adicionar_disciplina') }}" class="btn btn-primary">
@@ -52,7 +73,7 @@
                         <td data-label="Matéria">{{ item.disciplina.materia }}</td>
                         <td data-label="Carga Horária">{{ item.disciplina.carga_horaria_prevista }}h</td>
                         <td data-label="Progresso">
-                            <div class="progress-bar-container">
+                            <div class="progress-bar-container" title="Aulas concluídas de semanas que já terminaram">
                                 <div class="progress-bar-fill" style="width: {{ item.progresso.percentual }}%;">
                                     <span class="progress-bar-text">
                                         {{ item.progresso.agendado }} / {{ item.progresso.previsto }}h ({{ item.progresso.percentual }}%)
@@ -86,11 +107,13 @@
 </div>
 
 <style>
-.ciclo-selector {
+.filter-group {
     display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.table-filters {
+    padding: 1.5rem;
     background-color: var(--color-background);
     border-radius: 8px;
     border: 1px solid var(--color-border);
