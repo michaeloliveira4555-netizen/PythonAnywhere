@@ -13,7 +13,7 @@ from ..models.disciplina import Disciplina
 from ..models.turma import Turma
 from ..services.historico_service import HistoricoService
 from ..services.aluno_service import AlunoService
-from utils.decorators import admin_or_programmer_required, aluno_profile_required
+from utils.decorators import admin_or_programmer_required, aluno_profile_required, can_view_management_pages_required
 
 historico_bp = Blueprint('historico', __name__, url_prefix='/historico')
 
@@ -63,7 +63,7 @@ def historico_funcional():
     return render_template('historico_funcional.html')
 # --- FIM DAS NOVAS ROTAS ---
 
-@historico_bp.route('/minhas-notas') # Rota antiga renomeada
+@historico_bp.route('/minhas-notas')
 @login_required
 @aluno_profile_required
 def minhas_notas():
@@ -94,6 +94,31 @@ def minhas_notas():
                            media_final_curso=media_final_curso,
                            is_own_profile=True)
 
+# --- NOVA ROTA PARA VISUALIZAÇÃO POR ADMINS ---
+@historico_bp.route('/ver/<int:aluno_id>')
+@login_required
+@can_view_management_pages_required
+def ver_historico_aluno(aluno_id):
+    # Apenas admins podem ver o histórico de outros
+    if current_user.role not in ['super_admin', 'programador', 'admin_escola']:
+        flash("Você não tem permissão para visualizar este histórico.", 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    aluno = AlunoService.get_aluno_by_id(aluno_id)
+    if not aluno:
+        flash("Aluno não encontrado.", 'danger')
+        return redirect(url_for('aluno.listar_alunos'))
+
+    historico_disciplinas = HistoricoService.get_historico_disciplinas_for_aluno(aluno_id)
+    notas_finais = [h.nota for h in historico_disciplinas if h.nota is not None]
+    media_final_curso = sum(notas_finais) / len(notas_finais) if notas_finais else 0.0
+
+    return render_template('historico_aluno.html',
+                           aluno=aluno,
+                           historico_disciplinas=historico_disciplinas,
+                           media_final_curso=media_final_curso,
+                           is_own_profile=False) # Flag para o template saber que não é o perfil próprio
+
 
 @historico_bp.route('/avaliar/<int:historico_id>', methods=['POST'])
 @login_required
@@ -118,7 +143,10 @@ def avaliar_aluno_disciplina(historico_id):
     else:
         flash(message, 'danger')
 
-    # Redireciona de volta para a página de notas
+    # Se a edição foi feita por um admin, retorna para a página de visualização do aluno
+    if is_admin:
+        return redirect(url_for('historico.ver_historico_aluno', aluno_id=aluno_id))
+    # Se foi o próprio aluno, retorna para a página de 'minhas notas'
     return redirect(url_for('historico.minhas_notas'))
 
 
@@ -132,7 +160,7 @@ def adicionar_atividade(aluno_id):
         flash(message, 'success' if success else 'danger')
     else:
         flash('Erro de validação no formulário.', 'danger')
-    return redirect(url_for('historico.minhas_notas')) # Ajustar conforme a nova estrutura
+    return redirect(url_for('historico.ver_historico_aluno', aluno_id=aluno_id))
 
 @historico_bp.route('/atividade/editar/<int:atividade_id>', methods=['POST'])
 @login_required
@@ -145,7 +173,7 @@ def editar_atividade(atividade_id):
         flash(message, 'success' if success else 'danger')
     else:
         flash('Erro de validação no formulário.', 'danger')
-    return redirect(url_for('historico.minhas_notas')) # Ajustar
+    return redirect(url_for('historico.ver_historico_aluno', aluno_id=aluno_id))
 
 @historico_bp.route('/atividade/deletar/<int:atividade_id>', methods=['POST'])
 @login_required
@@ -158,4 +186,4 @@ def deletar_atividade(atividade_id):
         flash(message, 'success' if success else 'danger')
     else:
         flash('Falha na validação do token CSRF.', 'danger')
-    return redirect(url_for('historico.minhas_notas')) # Ajustar
+    return redirect(url_for('historico.ver_historico_aluno', aluno_id=aluno_id))
