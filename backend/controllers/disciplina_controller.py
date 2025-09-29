@@ -43,14 +43,21 @@ def listar_disciplinas():
     ).order_by(Disciplina.materia)
 
     disciplinas = db.session.scalars(query).all()
-    delete_form = DeleteForm()
     
-    ciclos_disponiveis = db.session.scalars(
-        select(Ciclo).order_by(Ciclo.id)
-    ).all()
+    # --- LÓGICA DE CÁLCULO DE PROGRESSO ADICIONADA ---
+    disciplinas_com_progresso = []
+    for d in disciplinas:
+        progresso = DisciplinaService.get_dados_progresso(d)
+        disciplinas_com_progresso.append({
+            'disciplina': d,
+            'progresso': progresso
+        })
+
+    delete_form = DeleteForm()
+    ciclos_disponiveis = db.session.scalars(select(Ciclo).order_by(Ciclo.id)).all()
 
     return render_template('listar_disciplinas.html', 
-                           disciplinas=disciplinas, 
+                           disciplinas_com_progresso=disciplinas_com_progresso, 
                            delete_form=delete_form, 
                            ciclo_selecionado=ciclo_selecionado_id,
                            ciclos=ciclos_disponiveis)

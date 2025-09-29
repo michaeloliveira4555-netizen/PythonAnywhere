@@ -1,9 +1,10 @@
 # backend/services/disciplina_service.py
 
 from collections import defaultdict
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from flask import current_app
+from datetime import date # --- NOVA IMPORTAÇÃO ---
 
 from ..models.database import db
 from ..models.disciplina import Disciplina
@@ -12,6 +13,8 @@ from ..models.historico_disciplina import HistoricoDisciplina
 from ..models.aluno import Aluno
 from ..models.turma import Turma
 from ..models.ciclo import Ciclo
+from ..models.horario import Horario
+from ..models.semana import Semana # --- NOVA IMPORTAÇÃO ---
 
 class DisciplinaService:
     @staticmethod
@@ -97,8 +100,8 @@ class DisciplinaService:
     @staticmethod
     def get_disciplinas_agrupadas_por_ciclo(school_id: int):
         """
-        Busca todas as disciplinas de uma escola e as agrupa por ciclo.
-        Retorna um dicionário onde as chaves são os nomes dos ciclos.
+        Busca todas as disciplinas de uma escola, calcula o progresso de cada uma
+        e as agrupa por ciclo.
         """
         disciplinas_query = (
             select(Disciplina)
@@ -109,7 +112,37 @@ class DisciplinaService:
         
         disciplinas_agrupadas = defaultdict(list)
         for disciplina in disciplinas:
+            progresso = DisciplinaService.get_dados_progresso(disciplina)
+            item = {'disciplina': disciplina, 'progresso': progresso}
             if disciplina.ciclo:
-                disciplinas_agrupadas[disciplina.ciclo.nome].append(disciplina)
+                disciplinas_agrupadas[disciplina.ciclo.nome].append(item)
             
         return dict(sorted(disciplinas_agrupadas.items()))
+
+    # --- FUNÇÃO MODIFICADA PARA CONSIDERAR APENAS AULAS CONCLUÍDAS ---
+    @staticmethod
+    def get_dados_progresso(disciplina):
+        """Calcula as horas agendadas, previstas e o percentual de conclusão de uma disciplina."""
+        
+        # A consulta agora junta com a tabela de semanas para filtrar pela data
+        total_concluido = db.session.scalar(
+            select(func.sum(Horario.duracao))
+            .join(Semana)
+            .where(
+                Horario.disciplina_id == disciplina.id,
+                Horario.status == 'confirmado',
+                Semana.data_fim < date.today() # Apenas aulas de semanas que já terminaram
+            )
+        ) or 0
+        
+        carga_horaria = disciplina.carga_horaria_prevista
+        
+        percentual = 0
+        if carga_horaria > 0:
+            percentual = round((total_concluido / carga_horaria) * 100)
+            
+        return {
+            'agendado': total_concluido,
+            'previsto': carga_horaria,
+            'percentual': min(percentual, 100)
+        }

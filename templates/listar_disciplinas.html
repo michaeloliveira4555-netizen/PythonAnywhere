@@ -34,27 +34,37 @@
     </div>
 
     <div class="table-responsive">
-        {% if disciplinas %}
+        {% if disciplinas_com_progresso %}
             <table class="table-styled">
                 <thead>
                     <tr>
-                        <th>Matéria</th>
+                        <th style="width: 40%;">Matéria</th>
                         <th>Carga Horária</th>
+                        <th style="width: 30%;">Progresso (Aulas Confirmadas)</th>
                         {% if current_user.role in ['programador', 'admin_escola'] %}
                         <th class="text-right">Ações</th>
                         {% endif %}
                     </tr>
                 </thead>
                 <tbody>
-                    {% for disciplina in disciplinas %}
+                    {% for item in disciplinas_com_progresso %}
                     <tr>
-                        <td data-label="Matéria">{{ disciplina.materia }}</td>
-                        <td data-label="Carga Horária">{{ disciplina.carga_horaria_prevista if disciplina.carga_horaria_prevista > 0 else 'N/D' }}h</td>
+                        <td data-label="Matéria">{{ item.disciplina.materia }}</td>
+                        <td data-label="Carga Horária">{{ item.disciplina.carga_horaria_prevista }}h</td>
+                        <td data-label="Progresso">
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill" style="width: {{ item.progresso.percentual }}%;">
+                                    <span class="progress-bar-text">
+                                        {{ item.progresso.agendado }} / {{ item.progresso.previsto }}h ({{ item.progresso.percentual }}%)
+                                    </span>
+                                </div>
+                            </div>
+                        </td>
                         {% if current_user.role in ['programador', 'admin_escola'] %}
                         <td data-label="Ações" class="text-right">
                             <div class="btn-group">
-                                <a href="{{ url_for('disciplina.editar_disciplina', disciplina_id=disciplina.id) }}" class="btn btn-sm btn-warning">Gerenciar</a>
-                                <form method="POST" action="{{ url_for('disciplina.excluir_disciplina', disciplina_id=disciplina.id) }}" style="display: inline;" onsubmit="return confirm('⚠️ ATENÇÃO: Excluir esta disciplina irá:\n\n• Remover todas as associações com instrutores\n• Remover todas as aulas agendadas\n• Remover do histórico de todos os alunos\n\nEsta ação NÃO PODE ser desfeita!\n\nTem certeza que deseja continuar?');">
+                                <a href="{{ url_for('disciplina.editar_disciplina', disciplina_id=item.disciplina.id) }}" class="btn btn-sm btn-warning">Gerenciar</a>
+                                <form method="POST" action="{{ url_for('disciplina.excluir_disciplina', disciplina_id=item.disciplina.id) }}" style="display: inline;" onsubmit="return confirm('⚠️ ATENÇÃO: Excluir esta disciplina irá:\n\n• Remover todas as associações com instrutores\n• Remover todas as aulas agendadas\n• Remover do histórico de todos os alunos\n\nEsta ação NÃO PODE ser desfeita!\n\nTem certeza que deseja continuar?');">
                                     {{ delete_form.hidden_tag() }}
                                     <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
                                 </form>
@@ -94,6 +104,30 @@
 }
 .btn-group form {
     margin: 0;
+}
+.progress-bar-container {
+    width: 100%;
+    background-color: #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+    height: 24px;
+    position: relative;
+    border: 1px solid #dee2e6;
+}
+.progress-bar-fill {
+    background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.8rem;
+    transition: width 0.5s ease-in-out;
+}
+.progress-bar-text {
+    padding: 0 10px;
+    white-space: nowrap;
 }
 @media (max-width: 768px) {
     .btn-group {

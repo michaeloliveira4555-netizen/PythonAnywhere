@@ -89,10 +89,13 @@
 
             <div class="form-group">
                 <label for="modal-disciplina">Disciplina</label>
-                <select id="modal-disciplina" name="disciplina_id" class="form-control" required {% if not is_admin and disciplinas_disponiveis|length == 1 %}disabled{% endif %}>
+                {# --- SELECT MODIFICADO PARA MOSTRAR HORAS RESTANTES --- #}
+                <select id="modal-disciplina" name="disciplina_id" class="form-control" required>
                     <option value="">Selecione a disciplina</option>
                     {% for d in disciplinas_disponiveis %}
-                    <option value="{{ d.id }}" {% if not is_admin and disciplinas_disponiveis|length == 1 %}selected{% endif %}>{{ d.nome }}</option>
+                    <option value="{{ d.id }}" {% if not is_admin and disciplinas_disponiveis|length == 1 %}selected{% endif %}>
+                        {{ d.nome }} (Restam: {{ d.restantes }}h)
+                    </option>
                     {% endfor %}
                 </select>
             </div>
@@ -186,7 +189,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const weekendTable = document.getElementById('weekend-table');
     const weekendToggle = document.getElementById('weekend-toggle');
 
-    // **NOVO**: Adiciona esta linha para obter o token CSRF
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
     function openModal(config) {
@@ -246,7 +248,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (confirm('Tem certeza que deseja remover esta aula?')) {
                 fetch('/horario/remover-aula', {
                     method: 'POST',
-                    // **CORREÇÃO APLICADA AQUI**
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': csrfToken
@@ -292,7 +293,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         fetch('/horario/salvar-aula', {
             method: 'POST',
-            // **CORREÇÃO APLICADA AQUI**
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': csrfToken
