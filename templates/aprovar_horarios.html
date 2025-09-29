@@ -36,20 +36,19 @@
                         <td data-label="Dia">{{ aula.dia_semana }}</td>
                         <td data-label="Período">{{ aula.periodo }}º</td>
                         <td data-label="Disciplina">{{ aula.disciplina.materia }}</td>
-                        {# --- CORREÇÃO 1: Exibir o nome do ciclo --- #}
                         <td data-label="Ciclo">{{ aula.disciplina.ciclo.nome if aula.disciplina.ciclo else 'N/A' }}</td>
                         <td data-label="Instrutor">{{ aula.instrutor.user.nome_completo or aula.instrutor.user.username }}</td>
                         <td data-label="Ações" class="text-right">
-                            {# --- CORREÇÃO 2: Wrapper para espaçar os botões --- #}
                             <div class="btn-group" style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                {# --- CORREÇÃO APLICADA AQUI: Adicionado csrf_token() diretamente --- #}
                                 <form method="POST" action="{{ url_for('horario.aprovar_horarios') }}" style="margin: 0;">
-                                    {{ form.hidden_tag() }}
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="horario_id" value="{{ aula.id }}">
                                     <input type="hidden" name="action" value="aprovar">
                                     <button type="submit" class="btn btn-sm btn-success">Aprovar</button>
                                 </form>
                                 <form method="POST" action="{{ url_for('horario.aprovar_horarios') }}" style="margin: 0;">
-                                    {{ form.hidden_tag() }}
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="horario_id" value="{{ aula.id }}">
                                     <input type="hidden" name="action" value="negar">
                                     <button type="submit" class="btn btn-sm btn-danger">Negar</button>
