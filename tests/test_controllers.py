@@ -60,9 +60,9 @@ class TestWorkflow:
             db.session.commit()
 
             # ETAPA C: Criar os usuários.
-            instrutor_user = User(matricula='instrutor_wf', nome_de_guerra='Sgt Workflow', role='instrutor', is_active=True)
+            instrutor_user = User(matricula='instrutor_wf', nome_de_guerra='Sgt Workflow', role='instrutor', is_active=True, posto_graduacao='Sargento')
             instrutor_user.set_password('pass1')
-            admin_user = User(matricula='admin_wf', nome_de_guerra='Ten Workflow', role='admin_escola', is_active=True)
+            admin_user = User(matricula='admin_wf', nome_de_guerra='Ten Workflow', role='admin_escola', is_active=True, posto_graduacao='Tenente')
             admin_user.set_password('pass2')
             aluno_user = User(matricula='aluno_wf', nome_de_guerra='Sd Workflow', role='aluno', is_active=True)
             aluno_user.set_password('pass3')
@@ -70,7 +70,7 @@ class TestWorkflow:
             db.session.commit()
 
             # ETAPA D: Criar os perfis e associações finais.
-            instrutor = Instrutor(user_id=instrutor_user.id, posto_graduacao='Sargento', telefone=None)
+            instrutor = Instrutor(user_id=instrutor_user.id, telefone=None, is_rr=False)
             aluno = Aluno(user_id=aluno_user.id, opm='EsFAS', turma_id=turma.id)
             db.session.add_all([instrutor, aluno])
             db.session.commit()

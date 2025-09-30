@@ -24,12 +24,12 @@ def setup_data(db_session):
     db_session.add(ciclo)
     db_session.commit()
 
-    user_instrutor = User(username='instrutor', matricula='inst1', email='instrutor@test.com')
+    user_instrutor = User(username='instrutor', matricula='inst1', email='instrutor@test.com', posto_graduacao='Sargento')
     user_instrutor.set_password('password')
     db_session.add(user_instrutor)
     db_session.commit()
 
-    instrutor = Instrutor(user_id=user_instrutor.id, posto_graduacao='Sargento', telefone=None)
+    instrutor = Instrutor(user_id=user_instrutor.id, telefone=None, is_rr=False)
     db_session.add(instrutor)
     db_session.commit()
 
@@ -82,10 +82,10 @@ class TestVinculoService:
         db_session.add(vinculo)
         db_session.commit()
 
-        user_novo_instrutor = User(username='instrutor2', matricula='inst2', email='instrutor2@test.com')
+        user_novo_instrutor = User(username='instrutor2', matricula='inst2', email='instrutor2@test.com', posto_graduacao='Tenente')
         db_session.add(user_novo_instrutor)
         db_session.commit()
-        novo_instrutor = Instrutor(user_id=user_novo_instrutor.id, posto_graduacao='Tenente', telefone=None)
+        novo_instrutor = Instrutor(user_id=user_novo_instrutor.id, telefone=None, is_rr=False)
         db_session.add(novo_instrutor)
         db_session.commit()
 

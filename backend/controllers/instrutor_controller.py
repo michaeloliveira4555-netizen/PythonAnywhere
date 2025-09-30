@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 from typing import Optional as TypingOptional
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
@@ -37,14 +36,14 @@ class DeleteForm(FlaskForm):
 class InstrutorBaseForm(FlaskForm):
     nome_completo = StringField('Nome completo', validators=[Optional(), Length(max=255)])
     nome_de_guerra = StringField('Nome de guerra', validators=[Optional(), Length(max=255)])
-    posto_graduacao_select = SelectField('Posto/Graduacao', choices=POSTOS_CHOICES)
+    posto_graduacao_select = SelectField('Posto/Graduação', choices=POSTOS_CHOICES)
     posto_graduacao_outro = StringField('Outro (especifique)', validators=[Optional(), Length(max=100)])
     telefone = StringField('Telefone', validators=[Optional(), Length(max=30)])
     is_rr = BooleanField('RR')
 
 
 class CadastroInstrutorForm(InstrutorBaseForm):
-    matricula = StringField('Matricula', validators=[DataRequired(), Length(max=64)])
+    matricula = StringField('Matrícula', validators=[DataRequired(), Length(max=64)])
     email = StringField('E-mail', validators=[DataRequired(), Email()])
     password = PasswordField('Senha', validators=[Optional(), Length(min=4)])
     submit = SubmitField('Salvar')
@@ -58,7 +57,7 @@ class CompletarInstrutorForm(InstrutorBaseForm):
     submit = SubmitField('Salvar')
 
 
-def _resolve_school_id_for_user(user: User):
+def _resolve_school_id_for_user(user: User) -> TypingOptional[int]:
     if user and getattr(user, 'user_schools', None):
         for user_school in user.user_schools:
             return user_school.school_id
@@ -87,107 +86,23 @@ def listar_instrutores():
     delete_form = DeleteForm()
     return render_template('listar_instrutores.html', instrutores=instrutores, form=delete_form)
 
-=======
-# backend/controllers/instrutor_controller.py
-
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required
-from sqlalchemy import select
-from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, BooleanField, PasswordField, SubmitField
-from wtforms.validators import DataRequired, Optional, Email, EqualTo
-from ..models.database import db
-from ..services.instrutor_service import InstrutorService
-from ..services.user_service import UserService # Importar UserService
-from ..models.user import User
-# --- DECORADOR CORRIGIDO IMPORTADO AQUI ---
-from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required, can_view_management_pages_required
-
-instrutor_bp = Blueprint('instrutor', __name__, url_prefix='/instrutor')
-
-class InstrutorForm(FlaskForm):
-    nome_completo = StringField('Nome Completo', validators=[DataRequired()])
-    nome_de_guerra = StringField('Nome de Guerra', validators=[DataRequired()])
-    matricula = StringField('Matrícula', validators=[DataRequired()])
-    email = StringField('E-mail', validators=[DataRequired(), Email()])
-    password = PasswordField('Senha', validators=[
-        DataRequired(),
-        EqualTo('password2', message='As senhas devem corresponder.')
-    ])
-    password2 = PasswordField('Confirmar Senha', validators=[DataRequired()])
-    posto_graduacao_select = SelectField('Posto/Graduação', choices=[
-        ('Soldado', 'Soldado'), ('Cabo', 'Cabo'), ('3º Sargento', '3º Sargento'),
-        ('2º Sargento', '2º Sargento'), ('1º Sargento', '1º Sargento'),
-        ('Tenente', 'Tenente'), ('Capitão', 'Capitão'), ('Major', 'Major'),
-        ('Tenente-Coronel', 'Tenente-Coronel'), ('Coronel', 'Coronel'),
-        ('Outro', 'Outro')
-    ], validators=[DataRequired()])
-    posto_graduacao_outro = StringField('Outro (especifique)', validators=[Optional()])
-    telefone = StringField('Telefone', validators=[Optional()])
-    is_rr = BooleanField('RR')
-    submit = SubmitField('Salvar')
-
-class EditInstrutorForm(FlaskForm):
-    nome_completo = StringField('Nome Completo', validators=[DataRequired()])
-    nome_de_guerra = StringField('Nome de Guerra', validators=[DataRequired()])
-    posto_graduacao_select = SelectField('Posto/Graduação', choices=[
-        ('Soldado', 'Soldado'), ('Cabo', 'Cabo'), ('3º Sargento', '3º Sargento'),
-        ('2º Sargento', '2º Sargento'), ('1º Sargento', '1º Sargento'),
-        ('Tenente', 'Tenente'), ('Capitão', 'Capitão'), ('Major', 'Major'),
-        ('Tenente-Coronel', 'Tenente-Coronel'), ('Coronel', 'Coronel'),
-        ('Outro', 'Outro')
-    ], validators=[DataRequired()])
-    posto_graduacao_outro = StringField('Outro (especifique)', validators=[Optional()])
-    telefone = StringField('Telefone', validators=[Optional()])
-    is_rr = BooleanField('RR')
-    submit = SubmitField('Salvar')
-
-class DeleteForm(FlaskForm):
-    pass
-
-@instrutor_bp.route('/')
-@login_required
-# --- CORREÇÃO APLICADA AQUI ---
-# Permite que todos os usuários logados vejam a lista
-@can_view_management_pages_required
-def listar_instrutores():
-    instrutores = InstrutorService.get_all_instrutores()
-    return render_template('listar_instrutores.html', instrutores=instrutores, csrf_token=lambda: '')
->>>>>>> 74d55fc3fbee926aa951f4580f9a2976da5bcef9
 
 @instrutor_bp.route('/cadastrar', methods=['GET', 'POST'])
 @login_required
 @school_admin_or_programmer_required
 def cadastrar_instrutor():
-<<<<<<< HEAD
     form = CadastroInstrutorForm()
     if request.method == 'POST' and form.validate_on_submit():
-        payload = request.form.to_dict(flat=True)
         school_id = _ensure_school_id_for_current_user()
-        existing_user = db.session.scalar(select(User).where(User.email == form.email.data))
+        if not school_id:
+            flash('Não foi possível identificar a escola para vincular o instrutor.', 'danger')
+            return redirect(url_for('instrutor.listar_instrutores'))
 
-        if existing_user:
-            if existing_user.instrutor_profile:
-                flash('Este usuario ja possui perfil de instrutor.', 'warning')
-                return redirect(url_for('instrutor.listar_instrutores'))
-
-            ok, message = InstrutorService.create_profile_for_user(existing_user.id, payload)
-            if ok:
-                _sync_user_with_payload(existing_user, payload)
-                if school_id:
-                    _ensure_user_school_link(existing_user.id, school_id)
-                db.session.commit()
-                flash('Instrutor vinculado ao usuario existente com sucesso.', 'success')
-                return redirect(url_for('instrutor.listar_instrutores'))
-            flash(message, 'danger')
-        else:
-            if not payload.get('password'):
-                flash('Informe uma senha para criar o novo instrutor.', 'danger')
-            else:
-                ok, message = InstrutorService.create_full_instrutor(payload, school_id)
-                flash(message, 'success' if ok else 'danger')
-                if ok:
-                    return redirect(url_for('instrutor.listar_instrutores'))
+        payload = request.form.to_dict(flat=True)
+        success, message = InstrutorService.create_full_instrutor(payload, school_id)
+        flash(message, 'success' if success else 'danger')
+        if success:
+            return redirect(url_for('instrutor.listar_instrutores'))
     return render_template('cadastro_instrutor.html', form=form)
 
 
@@ -197,14 +112,14 @@ def cadastrar_instrutor():
 def editar_instrutor(instrutor_id: int):
     instrutor = InstrutorService.get_instrutor_by_id(instrutor_id)
     if not instrutor:
-        flash('Instrutor nao encontrado.', 'danger')
+        flash('Instrutor não encontrado.', 'danger')
         return redirect(url_for('instrutor.listar_instrutores'))
 
     form = EditarInstrutorForm()
     if request.method == 'POST' and form.validate_on_submit():
-        ok, message = InstrutorService.update_instrutor(instrutor_id, request.form.to_dict(flat=True))
-        flash(message, 'success' if ok else 'danger')
-        if ok:
+        success, message = InstrutorService.update_instrutor(instrutor_id, request.form.to_dict(flat=True))
+        flash(message, 'success' if success else 'danger')
+        if success:
             return redirect(url_for('instrutor.listar_instrutores'))
     else:
         _populate_instrutor_form(form, instrutor)
@@ -220,16 +135,16 @@ def completar_cadastro():
     if request.method == 'POST' and form.validate_on_submit():
         payload = request.form.to_dict(flat=True)
         if profile:
-            ok, message = InstrutorService.update_instrutor(profile.id, payload)
+            success, message = InstrutorService.update_instrutor(profile.id, payload)
         else:
-            ok, message = InstrutorService.create_profile_for_user(current_user.id, payload)
-            if ok:
+            success, message = InstrutorService.create_profile_for_user(current_user.id, payload)
+            if success:
                 user = db.session.get(User, current_user.id)
                 if user:
                     _sync_user_with_payload(user, payload)
                     db.session.commit()
-        flash(message, 'success' if ok else 'danger')
-        if ok:
+        flash(message, 'success' if success else 'danger')
+        if success:
             return redirect(url_for('main.dashboard'))
     else:
         if profile:
@@ -239,60 +154,14 @@ def completar_cadastro():
             form.nome_de_guerra.data = current_user.nome_de_guerra or ''
     return render_template('completar_cadastro_instrutor.html', form=form)
 
-=======
-    form = InstrutorForm()
-    if form.validate_on_submit():
-        school_id = UserService.get_current_school_id()
-        if not school_id:
-            flash('Não foi possível identificar a escola para associar o instrutor.', 'danger')
-            return redirect(url_for('instrutor.listar_instrutores'))
-            
-        success, message = InstrutorService.create_full_instrutor(form.data, school_id)
-        if success:
-            flash(message, 'success')
-            return redirect(url_for('instrutor.listar_instrutores'))
-        else:
-            flash(message, 'danger')
-    return render_template('cadastro_instrutor.html', form=form)
-
-@instrutor_bp.route('/editar/<int:instrutor_id>', methods=['GET', 'POST'])
-@login_required
-@school_admin_or_programmer_required
-def editar_instrutor(instrutor_id):
-    instrutor = InstrutorService.get_instrutor_by_id(instrutor_id)
-    if not instrutor:
-        flash('Instrutor não encontrado.', 'danger')
-        return redirect(url_for('instrutor.listar_instrutores'))
-    
-    form = EditInstrutorForm(obj=instrutor.user)
-    if request.method == 'GET':
-        form.is_rr.data = instrutor.is_rr
-        posto = instrutor.user.posto_graduacao
-        if posto in [choice[0] for choice in form.posto_graduacao_select.choices]:
-            form.posto_graduacao_select.data = posto
-        else:
-            form.posto_graduacao_select.data = 'Outro'
-            form.posto_graduacao_outro.data = posto
-
-    if form.validate_on_submit():
-        success, message = InstrutorService.update_instrutor(instrutor_id, form.data)
-        if success:
-            flash(message, 'success')
-            return redirect(url_for('instrutor.listar_instrutores'))
-        else:
-            flash(message, 'danger')
-    
-    return render_template('editar_instrutor.html', form=form)
->>>>>>> 74d55fc3fbee926aa951f4580f9a2976da5bcef9
 
 @instrutor_bp.route('/excluir/<int:instrutor_id>', methods=['POST'])
 @login_required
 @school_admin_or_programmer_required
-<<<<<<< HEAD
 def excluir_instrutor(instrutor_id: int):
     form = DeleteForm()
     if not form.validate_on_submit():
-        flash('Falha na validacao do token CSRF.', 'danger')
+        flash('Falha na validação do token CSRF.', 'danger')
         return redirect(url_for('instrutor.listar_instrutores'))
     ok, message = InstrutorService.delete_instrutor(instrutor_id)
     flash(message, 'success' if ok else 'danger')
@@ -345,13 +214,3 @@ def _ensure_user_school_link(user_id: int, school_id: int) -> None:
     )
     if not exists:
         db.session.add(UserSchool(user_id=user_id, school_id=school_id, role='instrutor'))
-
-=======
-def excluir_instrutor(instrutor_id):
-    success, message = InstrutorService.delete_instrutor(instrutor_id)
-    if success:
-        flash(message, 'success')
-    else:
-        flash(message, 'danger')
-    return redirect(url_for('instrutor.listar_instrutores'))
->>>>>>> 74d55fc3fbee926aa951f4580f9a2976da5bcef9

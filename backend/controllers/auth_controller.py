@@ -1,6 +1,6 @@
 # backend/controllers/auth_controller.py
 from flask import Blueprint, flash, redirect, render_template, request, url_for
-from flask_login import login_user, logout_user, login_required
+from flask_login import login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
 from sqlalchemy import select
 from wtforms import StringField, PasswordField, SubmitField
@@ -18,11 +18,31 @@ from ..services.password_reset_service import PasswordResetService
 
 auth_bp = Blueprint('auth', __name__)
 
-# Define o formulário de login
+
 class LoginForm(FlaskForm):
     username = StringField('Matrícula / Usuário', validators=[DataRequired()])
     password = PasswordField('Senha', validators=[DataRequired()])
     submit = SubmitField('Entrar')
+
+
+@auth_bp.before_app_request
+def enforce_password_change():
+    if not current_user.is_authenticated:
+        return None
+
+    if not getattr(current_user, 'must_change_password', False):
+        return None
+
+    allowed = {
+        'auth.force_change_password',
+        'auth.logout',
+        'static',
+    }
+    endpoint = request.endpoint or ''
+    if endpoint not in allowed:
+        return redirect(url_for('auth.force_change_password'))
+    return None
+
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
@@ -35,19 +55,18 @@ def register():
         password2 = request.form.get('password2')
         role = request.form.get('role')
         opm = request.form.get('opm')
-        # --- NOVO CAMPO ---
         posto_graduacao = request.form.get('posto_graduacao')
 
         if not role:
             flash('Por favor, selecione sua função (Aluno ou Instrutor).', 'danger')
             return render_template('register.html', form_data=request.form)
-            
-        if not posto_graduacao:
-            flash('O campo Posto/Graduação é obrigatório.', 'danger')
-            return render_template('register.html', form_data=request.form)
 
         if role == 'aluno' and not opm:
             flash('O campo OPM é obrigatório para alunos.', 'danger')
+            return render_template('register.html', form_data=request.form)
+
+        if not posto_graduacao:
+            flash('O campo Posto/Graduação é obrigatório.', 'danger')
             return render_template('register.html', form_data=request.form)
 
         if not validate_email(email):
@@ -87,7 +106,7 @@ def register():
         user.username = matricula
         user.set_password(password)
         user.is_active = True
-        
+
         if role == 'instrutor' and not user.instrutor_profile:
             new_instrutor_profile = Instrutor(user_id=user.id)
             db.session.add(new_instrutor_profile)
@@ -103,7 +122,7 @@ def register():
                 for disciplina in disciplinas_da_escola:
                     nova_matricula = HistoricoDisciplina(aluno_id=new_aluno_profile.id, disciplina_id=disciplina.id)
                     db.session.add(nova_matricula)
-        
+
         db.session.commit()
 
         flash('Sua conta foi ativada com sucesso! Agora você pode fazer o login.', 'success')
@@ -126,7 +145,9 @@ def login():
 
         if user and user.is_active and user.check_password(password):
             login_user(user)
-            # --- REMOÇÃO DO REDIRECIONAMENTO PARA COMPLETAR CADASTRO ---
+            if getattr(user, 'must_change_password', False):
+                flash('Use uma nova senha para continuar.', 'warning')
+                return redirect(url_for('auth.force_change_password'))
             return redirect(url_for('main.dashboard'))
         elif user and not user.is_active:
             flash('Sua conta precisa ser ativada. Use a página de registro para ativá-la.', 'warning')
@@ -144,36 +165,52 @@ def logout():
     return redirect(url_for('auth.login'))
 
 
-@auth_bp.route('/set-new-with-token', methods=['GET', 'POST'])
-def set_new_with_token():
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
     if request.method == 'POST':
-        matricula = request.form.get('matricula', '').strip()
-        raw_token = request.form.get('token', '').strip()
+        matricula = (request.form.get('matricula') or '').strip()
+        if not matricula:
+            flash('Informe a matrícula do usuário.', 'warning')
+            return render_template('forgot_password.html', form_data=request.form)
+
+        success, message = PasswordResetService.request_password_reset(matricula)
+        flash(message, 'success' if success else 'danger')
+        if success:
+            return redirect(url_for('auth.login'))
+        return render_template('forgot_password.html', form_data=request.form)
+
+    return render_template('forgot_password.html', form_data={})
+
+
+@auth_bp.route('/force-change-password', methods=['GET', 'POST'])
+@login_required
+def force_change_password():
+    if not getattr(current_user, 'must_change_password', False):
+        flash('Senha já atualizada.', 'info')
+        return redirect(url_for('main.dashboard'))
+
+    if request.method == 'POST':
         password = request.form.get('password', '')
-        password2 = request.form.get('password2', '')
+        password_confirm = request.form.get('password2', '')
 
-        if not matricula or not raw_token or not password or not password2:
-            flash('Preencha todos os campos.', 'danger')
-            return render_template('set_new_with_token.html', form_data=request.form)
+        if not password or not password_confirm:
+            flash('Preencha os dois campos de senha.', 'warning')
+            return render_template('force_change_password.html', form_data=request.form)
 
-        if password != password2:
-            flash('As senhas não coincidem.', 'danger')
-            return render_template('set_new_with_token.html', form_data=request.form)
+        if password != password_confirm:
+            flash('As senhas informadas não coincidem.', 'danger')
+            return render_template('force_change_password.html', form_data=request.form)
 
         is_strong, message = validate_password_strength(password)
         if not is_strong:
             flash(message, 'danger')
-            return render_template('set_new_with_token.html', form_data=request.form)
-        
-        user = PasswordResetService.consume_with_user_and_raw_token(matricula, raw_token)
-        if not user:
-            flash('Token inválido, expirado ou dados incorretos.', 'danger')
-            return render_template('set_new_with_token.html', form_data=request.form)
+            return render_template('force_change_password.html', form_data=request.form)
 
-        user.set_password(password)
-        user.must_change_password = False
+        current_user.set_password(password)
+        current_user.must_change_password = False
         db.session.commit()
-        flash('Senha redefinida com sucesso. Faça o login com a nova senha.', 'success')
-        return redirect(url_for('auth.login'))
 
-    return render_template('set_new_with_token.html', form_data={})
+        flash('Senha atualizada com sucesso!', 'success')
+        return redirect(url_for('main.dashboard'))
+
+    return render_template('force_change_password.html', form_data={})

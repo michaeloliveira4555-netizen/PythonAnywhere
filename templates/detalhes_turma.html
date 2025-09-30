@@ -19,33 +19,24 @@
                 <thead>
                     <tr>
                         <th>Nome Completo</th>
-<<<<<<< HEAD
+                        {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
                         {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
                         <th>Matrícula</th>
                         {% endif %}
-=======
-                        <th>Matrícula</th>
->>>>>>> 74d55fc3fbee926aa951f4580f9a2976da5bcef9
-                    </tr>
                 </thead>
                 <tbody>
                     {% for aluno in turma.alunos | sort(attribute='user.nome_completo') %}
                     <tr>
                         <td>{{ aluno.user.nome_completo or aluno.user.username }}</td>
-<<<<<<< HEAD
-                        {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
+                        {% if current_user.role in [''super_admin'', ''programador'', ''admin_escola''] %}
                         <td>{{ aluno.user.matricula }}</td>
                         {% endif %}
-=======
-                        <td>{{ aluno.user.matricula }}</td>
->>>>>>> 74d55fc3fbee926aa951f4580f9a2976da5bcef9
                     </tr>
                     {% else %}
+                    {% else %}
                     <tr>
-                        <td colspan="2" class="text-center">Nenhum aluno cadastrado nesta turma.</td>
+                        <td colspan="{% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}2{% else %}1{% endif %}" class="text-center">Nenhum aluno cadastrado nesta turma.</td>
                     </tr>
-                    {% endfor %}
-                </tbody>
             </table>
         </div>
     </div>
@@ -132,3 +123,7 @@
 
 </style>
 {% endblock %}
+
+
+
+

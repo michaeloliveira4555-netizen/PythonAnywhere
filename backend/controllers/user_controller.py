@@ -226,10 +226,7 @@ def criar_admin_escola():
             base_username = (email.split("@")[0] if "@" in email else email)
             username = generate_unique_username(base_username)
 
-<<<<<<< HEAD
             # Checagens duras em email / matricula
-=======
->>>>>>> 74d55fc3fbee926aa951f4580f9a2976da5bcef9
             if exists_in_users_by("email", email):
                 flash("E-mail já está em uso na tabela de usuários.", "warning")
                 return redirect(url_for("user.criar_admin_escola"))
@@ -261,7 +258,6 @@ def criar_admin_escola():
                 flash(f"Administrador criado com sucesso. Username: {username} • Senha temporária: {temp_pass}", "success")
                 return redirect(url_for("user.lista_admins_escola"))
 
-<<<<<<< HEAD
             # ORM
             user = User()  # type: ignore
             if hasattr(user, "matricula"): user.matricula = matricula  # type: ignore
@@ -271,7 +267,6 @@ def criar_admin_escola():
             if hasattr(user, "role"): user.role = "admin_escola"  # type: ignore
             if hasattr(user, "is_active"): user.is_active = True  # type: ignore
             if hasattr(user, "must_change_password"): user.must_change_password = True  # type: ignore
-=======
             user = User()
             if hasattr(user, "id_func"): user.id_func = id_func
             if hasattr(user, "username"): user.username = username
@@ -280,7 +275,6 @@ def criar_admin_escola():
             if hasattr(user, "role"): user.role = "admin_escola"
             if hasattr(user, "is_active"): user.is_active = True
             if hasattr(user, "must_change_password"): user.must_change_password = True
->>>>>>> 74d55fc3fbee926aa951f4580f9a2976da5bcef9
 
             set_password_hash_on_user(user, temp_pass)
 

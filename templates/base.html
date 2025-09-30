@@ -134,8 +134,8 @@
                     <a href="{{ url_for('horario.aprovar_horarios') }}" class="nav-link {% if request.endpoint == 'horario.aprovar_horarios' %}active{% endif %}">
                         <div class="nav-icon">👍</div> Aprovar Aulas
                     </a>
-                    <a href="#" class="nav-link">
-                        <div class="nav-icon">🔔</div> Notificações
+                    <a href="{{ url_for('admin_escola.reset_requests') }}" class="nav-link {% if request.endpoint == 'admin_escola.reset_requests' %}active{% endif %}">
+                        <div class="nav-icon">🔔</div> Recuperação de Senhas
                     </a>
                     <a href="{{ url_for('relatorios.index') }}" class="nav-link {% if request.endpoint and 'relatorios.' in request.endpoint %}active{% endif %}">
                         <div class="nav-icon">📊</div> Relatórios
@@ -161,7 +161,7 @@
                     <a href="{{ url_for('historico.index') }}" class="nav-link {% if request.endpoint and 'historico.' in request.endpoint %}active{% endif %}">
                         <div class="nav-icon">📊</div> Meu CTSP
                     </a>
-                    <a href="#" class="nav-link">
+                    <a href="{{ url_for('admin_escola.reset_requests') }}" class="nav-link {% if request.endpoint == 'admin_escola.reset_requests' %}active{% endif %}">
                         <div class="nav-icon">📖</div> Material de Estudo
                     </a>
                 {% endif %}

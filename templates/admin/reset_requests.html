@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Solicitações de Recuperação{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <h1>Solicitações de Recuperação de Senha</h1>
+  <p>Visualize os pedidos enviados pelos usuários da sua escola e gere senhas temporárias quando necessário.</p>
+</div>
+
+<div class="table-container">
+  <div class="table-header">
+    <h3>Solicitações {{ status|title if status else '' }}</h3>
+    <div class="header-actions">
+      <form method="GET" action="{{ url_for('admin_escola.reset_requests') }}" class="d-inline-flex gap-2">
+        <select class="form-select" name="status" onchange="this.form.submit()">
+          {% for option in ['pending', 'completed', 'cancelled'] %}
+            <option value="{{ option }}" {% if option == status %}selected{% endif %}>{{ option|title }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    {% if reset_requests %}
+      <table class="table table-styled align-middle">
+        <thead>
+          <tr>
+            <th>Usuário</th>
+            <th>Papel</th>
+            <th>Escola</th>
+            <th>Administrador</th>
+            <th>Status</th>
+            <th>Solicitado em</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for request in reset_requests %}
+            <tr>
+              <td>{{ request.user.nome_completo or request.user.username or request.user.matricula }}</td>
+              <td>{{ request.user.role }}</td>
+              <td>{% if request.user.user_schools %}{{ request.user.user_schools[0].school.nome }}{% else %}-{% endif %}</td>
+              <td>{% if request.admin %}{{ request.admin.nome_completo or request.admin.username or request.admin.matricula }}{% else %}—{% endif %}</td>
+              <td>
+                {% if request.status == 'pending' %}
+                  <span class="badge bg-warning text-dark">Pendente</span>
+                {% elif request.status == 'completed' %}
+                  <span class="badge bg-success">Concluída</span>
+                {% else %}
+                  <span class="badge bg-secondary">Cancelada</span>
+                {% endif %}
+              </td>
+              <td>{{ request.created_at.strftime('%d/%m/%Y %H:%M') if request.created_at else '-' }}</td>
+              <td class="d-flex gap-2">
+                {% if request.status == 'pending' %}
+                  <form method="POST" action="{{ url_for('admin_escola.process_reset_request', request_id=request.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-sm btn-primary" type="submit">Gerar senha</button>
+                  </form>
+                  <form method="POST" action="{{ url_for('admin_escola.cancel_reset_request', request_id=request.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-sm btn-outline-secondary" type="submit">Cancelar</button>
+                  </form>
+                {% else %}
+                  {% if request.processed_by_admin %}
+                    <small class="text-muted">Processado por {{ request.processed_by_admin.nome_completo or request.processed_by_admin.username }}</small>
+                  {% endif %}
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="text-center py-5">
+        <h4 class="mb-2">Nenhuma solicitação encontrada.</h4>
+        <p class="text-muted mb-0">Novos pedidos aparecerão aqui para que você gere senhas temporárias.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
