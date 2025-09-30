@@ -35,23 +35,23 @@ def build_app():
     return obj() if callable(obj) else obj
 
 def norm_email(v): return (v or "").strip().lower() or None
-def norm_idfunc(v): return re.sub(r"\D+","",(v or "").strip()) or None
+def norm_matricula(v): return re.sub(r"\D+","",(v or "").strip()) or None
 
 def main():
     ensure_project_on_path()
 
     email = None
-    idfunc = None
+    matricula = None
     args = sys.argv[1:]
     i=0
     while i < len(args):
         a = args[i]
         if a == "--email" and i+1 < len(args): email = args[i+1]; i+=2; continue
-        if a == "--idfunc" and i+1 < len(args): idfunc = args[i+1]; i+=2; continue
+        if a == "--matricula" and i+1 < len(args): matricula = args[i+1]; i+=2; continue
         i+=1
 
     email_n = norm_email(email) if email else None
-    idfunc_n = norm_idfunc(idfunc) if idfunc else None
+    matricula_n = norm_matricula(matricula) if matricula else None
 
     app = build_app()
     with app.app_context():
@@ -73,12 +73,12 @@ def main():
                 count = "erro"
             print(f"- {name}: {count}")
 
-    if not email_n and not idfunc_n:
-        print("\n(use --email e/ou --idfunc para procurar valores em colunas relevantes)")
+    if not email_n and not matricula_n:
+        print("\n(use --email e/ou --matricula para procurar valores em colunas relevantes)")
         return
 
     print("\n=== PROCURANDO VALORES EM COLUNAS RELEVANTES ===")
-    RELEVANT_SUBSTR = ["email","mail","idfunc","id_func","matricula","siape","cpf","documento"]
+    RELEVANT_SUBSTR = ["email","mail","matricula","matricula","matricula","siape","cpf","documento"]
     with engine.connect() as conn:
         for name, table in meta.tables.items():
             cols = list(table.c.keys())
@@ -91,11 +91,11 @@ def main():
                 if isinstance(c.type, (String, Unicode, UnicodeText, Text)):
                     if email_n:
                         conditions.append(c.ilike(f"%{email_n}%"))
-                    if idfunc_n:
-                        conditions.append(c.ilike(f"%{idfunc_n}%"))
-                if idfunc_n and isinstance(c.type, (Integer, BigInteger)):
+                    if matricula_n:
+                        conditions.append(c.ilike(f"%{matricula_n}%"))
+                if matricula_n and isinstance(c.type, (Integer, BigInteger)):
                     try:
-                        num = int(idfunc_n)
+                        num = int(matricula_n)
                         conditions.append(c == num)
                     except ValueError:
                         pass

@@ -1,4 +1,4 @@
-# backend/maintenance/cleanup_user_by_email_or_idfunc.py
+# backend/maintenance/cleanup_user_by_email_or_matricula.py
 import os, sys, re
 from importlib import import_module
 from sqlalchemy import create_engine, MetaData, select, or_
@@ -32,13 +32,13 @@ def build_app():
     return obj() if callable(obj) else obj
 
 def norm_email(v): return (v or "").strip().lower() or None
-def norm_idfunc(v): return re.sub(r"\D+","",(v or "").strip()) or None
+def norm_matricula(v): return re.sub(r"\D+","",(v or "").strip()) or None
 
 def main():
     ensure_root()
 
     email = None
-    idfunc = None
+    matricula = None
     apply = False
 
     args = sys.argv[1:]
@@ -46,14 +46,14 @@ def main():
     while i < len(args):
         a = args[i]
         if a == "--email" and i+1 < len(args): email = args[i+1]; i+=2; continue
-        if a == "--idfunc" and i+1 < len(args): idfunc = args[i+1]; i+=2; continue
+        if a == "--matricula" and i+1 < len(args): matricula = args[i+1]; i+=2; continue
         if a == "--apply": apply = True; i+=1; continue
         i+=1
 
     email_n = norm_email(email) if email else None
-    idfunc_n = norm_idfunc(idfunc) if idfunc else None
-    if not email_n and not idfunc_n:
-        print("Uso: python -m backend.maintenance.cleanup_user_by_email_or_idfunc --email EMAIL --idfunc 123456 [--apply]")
+    matricula_n = norm_matricula(matricula) if matricula else None
+    if not email_n and not matricula_n:
+        print("Uso: python -m backend.maintenance.cleanup_user_by_email_or_matricula --email EMAIL --matricula 123456 [--apply]")
         sys.exit(1)
 
     app = build_app()
@@ -80,12 +80,12 @@ def main():
     for col in users.c:
         if email_n and isinstance(col.type, text_types):
             conds.append(col.ilike(f"%{email_n}%"))
-        if idfunc_n:
+        if matricula_n:
             if isinstance(col.type, text_types):
-                conds.append(col.ilike(f"%{idfunc_n}%"))
+                conds.append(col.ilike(f"%{matricula_n}%"))
             elif isinstance(col.type, num_types):
                 try:
-                    conds.append(col == int(idfunc_n))
+                    conds.append(col == int(matricula_n))
                 except ValueError:
                     pass
 

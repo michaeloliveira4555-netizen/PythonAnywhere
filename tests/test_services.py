@@ -52,13 +52,13 @@ class TestTurmaService:
             db.session.commit()
 
             turma = Turma(nome="Turma de Atualização", ano=2025, school_id=school.id)
-            user1 = User(id_func='aluno1', nome_completo='Aluno Um')
-            user2 = User(id_func='aluno2', nome_completo='Aluno Dois')
+            user1 = User(matricula='aluno1', nome_completo='Aluno Um')
+            user2 = User(matricula='aluno2', nome_completo='Aluno Dois')
             db.session.add_all([turma, user1, user2])
             db.session.commit()
 
-            aluno1 = Aluno(user_id=user1.id, matricula='m1', opm="OPM1")
-            aluno2 = Aluno(user_id=user2.id, matricula='m2', opm="OPM2")
+            aluno1 = Aluno(user_id=user1.id, opm="OPM1")
+            aluno2 = Aluno(user_id=user2.id, opm="OPM2")
             db.session.add_all([aluno1, aluno2])
             db.session.commit()
 

@@ -9,7 +9,7 @@ from sqlalchemy.sql.sqltypes import String, Unicode, UnicodeText, Text, Integer,
 from sqlalchemy.exc import SQLAlchemyError
 
 """
-Varredura geral no banco: procura um e-mail e/ou uma ID Func (número) em TODAS as tabelas/colunas.
+Varredura geral no banco: procura um e-mail e/ou uma Matrícula (número) em TODAS as tabelas/colunas.
 
 Como usar:
   source /home/esfasBM/.virtualenvs/meu-ambiente-py313/bin/activate
@@ -18,11 +18,11 @@ Como usar:
   # exemplo 1: só email
   python -m backend.maintenance.scan_db_for_value --email claudemir-fernandes@bm.rs.gov.br
 
-  # exemplo 2: só idfunc
-  python -m backend.maintenance.scan_db_for_value --idfunc 2277409
+  # exemplo 2: só matricula
+  python -m backend.maintenance.scan_db_for_value --matricula 2277409
 
   # exemplo 3: ambos
-  python -m backend.maintenance.scan_db_for_value --email claudemir-fernandes@bm.rs.gov.br --idfunc 2277409
+  python -m backend.maintenance.scan_db_for_value --email claudemir-fernandes@bm.rs.gov.br --matricula 2277409
 """
 
 # -------- utils de app/uri --------
@@ -69,7 +69,7 @@ def norm_email(v: str | None) -> str | None:
         return None
     return v.strip().lower()
 
-def norm_idfunc(v: str | None) -> str | None:
+def norm_matricula(v: str | None) -> str | None:
     if not v:
         return None
     return re.sub(r"\D+", "", v.strip()) or None
@@ -77,7 +77,7 @@ def norm_idfunc(v: str | None) -> str | None:
 # -------- impressão amigável --------
 
 COMMON_COLS = [
-    "id","email","id_func","matricula","siape","cpf","usuario_id","escola_id",
+    "id","email","matricula","matricula","siape","cpf","usuario_id","escola_id",
     "role","status","is_active","ativo","soft_deleted","created_at","updated_at","nome","nome_completo"
 ]
 
@@ -117,21 +117,21 @@ def main():
 
     # parse args
     email = None
-    idfunc = None
+    matricula = None
     args = sys.argv[1:]
     i = 0
     while i < len(args):
         a = args[i]
         if a == "--email" and i + 1 < len(args):
             email = args[i + 1]; i += 2; continue
-        if a == "--idfunc" and i + 1 < len(args):
-            idfunc = args[i + 1]; i += 2; continue
+        if a == "--matricula" and i + 1 < len(args):
+            matricula = args[i + 1]; i += 2; continue
         i += 1
 
     email_n = norm_email(email) if email else None
-    idfunc_n = norm_idfunc(idfunc) if idfunc else None
-    if not email_n and not idfunc_n:
-        print("Uso: python -m backend.maintenance.scan_db_for_value --email EMAIL --idfunc 123456")
+    matricula_n = norm_matricula(matricula) if matricula else None
+    if not email_n and not matricula_n:
+        print("Uso: python -m backend.maintenance.scan_db_for_value --email EMAIL --matricula 123456")
         sys.exit(1)
 
     # pega URI do banco da app Flask
@@ -151,7 +151,7 @@ def main():
 
     print("=== SCAN GERAL NO BANCO ===")
     if email_n:  print(f"- Procurando email (case-insensitive, LIKE): {email_n}")
-    if idfunc_n: print(f"- Procurando idfunc (dígitos), LIKE: {idfunc_n}")
+    if matricula_n: print(f"- Procurando matricula (dígitos), LIKE: {matricula_n}")
     print("")
 
     # pré-classifica tipos textuais
@@ -177,16 +177,16 @@ def main():
                     conds.append((col, "email", col.ilike(f"%{email_n}%")))
                     matched_cols.add(col.name)
 
-                # ID Func: procurar em texto (contém a sequência) e, se numérica, igualdade
-                if idfunc_n:
+                # Matrícula: procurar em texto (contém a sequência) e, se numérica, igualdade
+                if matricula_n:
                     if issubclass(coltype, TEXT_TYPES):
-                        conds.append((col, "idfunc", col.ilike(f"%{idfunc_n}%")))
+                        conds.append((col, "matricula", col.ilike(f"%{matricula_n}%")))
                         matched_cols.add(col.name)
                     elif issubclass(coltype, NUM_TYPES):
                         # tenta cast “=”
                         try:
-                            num_val = int(idfunc_n)
-                            conds.append((col, "idfunc", col == num_val))
+                            num_val = int(matricula_n)
+                            conds.append((col, "matricula", col == num_val))
                             matched_cols.add(col.name)
                         except ValueError:
                             pass
@@ -213,7 +213,7 @@ def main():
                                 sval = str(val)
                                 if tag == "email" and email_n and email_n in sval.lower():
                                     hit_cols.append(col.name)
-                                if tag == "idfunc" and idfunc_n and idfunc_n in re.sub(r"\D+","", sval):
+                                if tag == "matricula" and matricula_n and matricula_n in re.sub(r"\D+","", sval):
                                     hit_cols.append(col.name)
                             except Exception:
                                 pass

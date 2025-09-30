@@ -49,7 +49,7 @@ def upgrade():
     )
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('id_func', sa.String(length=20), nullable=False),
+    sa.Column('matricula', sa.String(length=20), nullable=False),
     sa.Column('username', sa.String(length=80), nullable=True),
     sa.Column('email', sa.String(length=120), nullable=True),
     sa.Column('password_hash', sa.String(length=256), nullable=True),
@@ -60,7 +60,7 @@ def upgrade():
     sa.Column('must_change_password', sa.Boolean(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email'),
-    sa.UniqueConstraint('id_func'),
+    sa.UniqueConstraint('matricula'),
     sa.UniqueConstraint('username')
     )
     op.create_table('disciplinas',

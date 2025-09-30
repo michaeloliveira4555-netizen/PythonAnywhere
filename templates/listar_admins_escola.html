@@ -30,7 +30,7 @@
             <tr>
               <th>Nome</th>
               <th>E-mail</th>
-              <th>ID Func</th>
+              <th>Matrícula</th>
               <th>Telefone</th>
               <th>Ativo</th>
             </tr>
@@ -40,7 +40,7 @@
               <tr>
                 <td>{{ u.nome or '—' }}</td>
                 <td>{{ u.email or '—' }}</td>
-                <td>{{ u.id_func or '—' }}</td>
+                <td>{{ u.matricula or '—' }}</td>
                 <td>{{ u.telefone or '—' }}</td>
                 <td>
                   {% if u.is_active is defined %}

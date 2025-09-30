@@ -13,7 +13,7 @@ admin_escola_bp = Blueprint('admin_escola', __name__, url_prefix='/admin-escola'
 @admin_or_programmer_required
 def pre_cadastro():
     if request.method == 'POST':
-        id_funcs_raw = request.form.get('id_funcs')
+        matriculas_raw = request.form.get('matriculas')
         role = request.form.get('role')
         school_id = request.form.get('school_id') # Usado pelo Super Admin
 
@@ -28,14 +28,14 @@ def pre_cadastro():
         # --- FIM DA LÓGICA ---
         
         # Validações
-        if not id_funcs_raw or not role or not school_id:
+        if not matriculas_raw or not role or not school_id:
             flash('Por favor, preencha todos os campos, incluindo a escola.', 'danger')
             return redirect(url_for('admin_escola.pre_cadastro'))
 
-        id_funcs = [m.strip() for m in id_funcs_raw.replace(',', ' ').replace(';', ' ').split() if m.strip()]
+        matriculas = [m.strip() for m in matriculas_raw.replace(',', ' ').replace(';', ' ').split() if m.strip()]
         
         # Passa o school_id para o serviço de pré-cadastro em lote
-        success, new_users_count, existing_users_count = UserService.batch_pre_register_users(id_funcs, role, school_id)
+        success, new_users_count, existing_users_count = UserService.batch_pre_register_users(matriculas, role, school_id)
         
         if success:
             if new_users_count > 0:

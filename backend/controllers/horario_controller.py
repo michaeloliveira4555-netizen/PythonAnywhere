@@ -1,135 +1,176 @@
-# backend/controllers/historico_controller.py
+# backend/controllers/horario_controller.py
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_required, current_user
+from sqlalchemy import select, or_
+from datetime import date
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, DateTimeLocalField, SubmitField, SelectField
+from wtforms import HiddenField, SubmitField
 from wtforms.validators import DataRequired
 
 from ..models.database import db
-from ..models.historico_disciplina import HistoricoDisciplina
-from ..services.historico_service import HistoricoService
-from ..services.aluno_service import AlunoService
-from utils.decorators import admin_or_programmer_required
+from ..models.horario import Horario
+from ..models.disciplina import Disciplina
+from ..models.instrutor import Instrutor
+from ..models.disciplina_turma import DisciplinaTurma
+from ..models.semana import Semana
+from ..models.turma import Turma
+from ..models.ciclo import Ciclo
+from utils.decorators import admin_or_programmer_required, can_schedule_classes_required
+from ..services.horario_service import HorarioService
+from ..services.user_service import UserService
 
-historico_bp = Blueprint('historico', __name__, url_prefix='/historico')
+horario_bp = Blueprint('horario', __name__, url_prefix='/horario')
 
-# Formulário para adicionar/editar atividades
-class AtividadeForm(FlaskForm):
-    tipo = SelectField('Tipo de Atividade', choices=[
-        ('Elogio', 'Elogio'),
-        ('Sanção Disciplinar', 'Sanção Disciplinar'),
-        ('Observação', 'Observação'),
-        ('Atualização Cadastral', 'Atualização Cadastral'),
-        ('Outro', 'Outro')
-    ], validators=[DataRequired()])
-    descricao = TextAreaField('Descrição', validators=[DataRequired()])
-    data_inicio = DateTimeLocalField('Data e Hora do Evento', format='%Y-%m-%dT%H:%M', validators=[DataRequired()])
-    submit = SubmitField('Salvar Atividade')
+class AprovarHorarioForm(FlaskForm):
+    horario_id = HiddenField('Horário ID', validators=[DataRequired()])
+    action = HiddenField('Ação', validators=[DataRequired()])
+    submit = SubmitField('Enviar')
 
-class DeleteForm(FlaskForm):
-    pass # Apenas para o token CSRF
-
-@historico_bp.route('/aluno/<int:aluno_id>')
+@horario_bp.route('/')
 @login_required
-def historico_aluno(aluno_id):
-    user_role = getattr(current_user, 'role', None)
-    is_admin = user_role in ['super_admin', 'programador', 'admin_escola']
-    is_own_profile = hasattr(current_user, 'aluno_profile') and current_user.aluno_profile and current_user.aluno_profile.id == aluno_id
+def index():
+    if current_user.role == 'aluno':
+        if not current_user.aluno_profile or not current_user.aluno_profile.turma:
+            flash("Você não está matriculado em nenhuma turma. Contate a administração.", 'warning')
+            return redirect(url_for('main.dashboard'))
+        
+        turma_do_aluno = current_user.aluno_profile.turma
+        school_id = turma_do_aluno.school_id
+        turma_selecionada_nome = turma_do_aluno.nome
+        todas_as_turmas = [turma_do_aluno]
+    else:
+        school_id = UserService.get_current_school_id()
+        if not school_id:
+            flash("Nenhuma escola associada ou selecionada.", "warning")
+            return redirect(url_for('main.dashboard'))
+        
+        todas_as_turmas = db.session.scalars(select(Turma).where(Turma.school_id == school_id).order_by(Turma.nome)).all()
+        turma_selecionada_nome = request.args.get('pelotao', session.get('ultima_turma_visualizada'))
+        
+        if not turma_selecionada_nome and todas_as_turmas:
+            turma_selecionada_nome = todas_as_turmas[0].nome
+        elif turma_selecionada_nome and turma_selecionada_nome not in [t.nome for t in todas_as_turmas]:
+             flash("Turma selecionada inválida.", "danger")
+             turma_selecionada_nome = todas_as_turmas[0].nome if todas_as_turmas else None
 
-    if not (is_admin or is_own_profile):
-        flash("Você não tem permissão para visualizar este histórico.", 'danger')
-        return redirect(url_for('main.dashboard'))
-
-    aluno = AlunoService.get_aluno_by_id(aluno_id)
-    if not aluno:
-        flash("Aluno não encontrado.", 'danger')
-        return redirect(url_for('main.dashboard'))
-
-    historico_disciplinas = HistoricoService.get_historico_disciplinas_for_aluno(aluno_id)
-    historico_atividades = HistoricoService.get_historico_atividades_for_aluno(aluno_id)
+    ciclo_selecionado_id = request.args.get('ciclo', session.get('ultimo_ciclo_horario', 1), type=int)
+    session['ultimo_ciclo_horario'] = ciclo_selecionado_id
     
-    notas_finais = [h.nota for h in historico_disciplinas if h.nota is not None]
-    media_final_curso = sum(notas_finais) / len(notas_finais) if notas_finais else 0.0
+    ciclos = db.session.scalars(select(Ciclo).order_by(Ciclo.id)).all()
+    
+    todas_as_semanas = []
+    if school_id:
+        todas_as_semanas = db.session.scalars(select(Semana).where(Semana.ciclo_id == ciclo_selecionado_id).order_by(Semana.data_inicio.desc())).all()
+    
+    semana_id = request.args.get('semana_id')
+    semana_selecionada = HorarioService.get_semana_selecionada(semana_id, ciclo_selecionado_id)
+    
+    horario_matrix = None
+    datas_semana = {}
+    if turma_selecionada_nome and semana_selecionada:
+        session['ultima_turma_visualizada'] = turma_selecionada_nome
+        horario_matrix = HorarioService.construir_matriz_horario(turma_selecionada_nome, semana_selecionada.id, current_user)
+        datas_semana = HorarioService.get_datas_da_semana(semana_selecionada)
 
-    form = AtividadeForm()
-    delete_form = DeleteForm()
+    can_schedule_in_this_turma = False
+    instrutor_turmas_vinculadas = [] # --- NOVA VARIÁVEL ---
 
-    return render_template('historico_aluno.html',
-                           aluno=aluno,
-                           historico_disciplinas=historico_disciplinas,
-                           historico_atividades=historico_atividades,
-                           media_final_curso=media_final_curso,
-                           form=form,
-                           delete_form=delete_form,
-                           is_own_profile=is_own_profile) # Passa a flag para o template
+    if current_user.role in ['programador', 'admin_escola', 'super_admin']:
+        can_schedule_in_this_turma = True
+    elif current_user.role == 'instrutor' and current_user.instrutor_profile:
+        instrutor_id = current_user.instrutor_profile.id
+        
+        # --- LÓGICA ALTERADA PARA ENCONTRAR TODAS AS TURMAS VINCULADAS ---
+        pelotao_names = db.session.scalars(
+            select(DisciplinaTurma.pelotao).where(
+                or_(
+                    DisciplinaTurma.instrutor_id_1 == instrutor_id,
+                    DisciplinaTurma.instrutor_id_2 == instrutor_id
+                )
+            ).distinct()
+        ).all()
+        
+        if pelotao_names:
+            instrutor_turmas_vinculadas = db.session.scalars(
+                select(Turma).where(Turma.nome.in_(pelotao_names)).order_by(Turma.nome)
+            ).all()
+        
+        # Verifica se o instrutor tem vínculo com a turma atualmente selecionada
+        if turma_selecionada_nome in pelotao_names:
+            can_schedule_in_this_turma = True
+
+    return render_template('quadro_horario.html',
+                           horario_matrix=horario_matrix,
+                           pelotao_selecionado=turma_selecionada_nome,
+                           semana_selecionada=semana_selecionada,
+                           todas_as_turmas=todas_as_turmas,
+                           todas_as_semanas=todas_as_semanas,
+                           ciclos=ciclos,
+                           ciclo_selecionado=ciclo_selecionado_id,
+                           datas_semana=datas_semana,
+                           can_schedule_in_this_turma=can_schedule_in_this_turma,
+                           instrutor_turmas_vinculadas=instrutor_turmas_vinculadas) # Passa a nova variável
 
 
-@historico_bp.route('/avaliar/<int:historico_id>', methods=['POST'])
+@horario_bp.route('/editar/<pelotao>/<int:semana_id>/<int:ciclo_id>')
 @login_required
-def avaliar_aluno_disciplina(historico_id):
-    registro = db.session.get(HistoricoDisciplina, historico_id)
-    if not registro:
-        flash("Registro de avaliação não encontrado.", 'danger')
-        return redirect(url_for('main.dashboard'))
+@can_schedule_classes_required
+def editar_horario_grid(pelotao, semana_id, ciclo_id):
+    semana = db.session.get(Semana, semana_id)
+    if not semana:
+        flash("Semana não encontrada.", "danger")
+        return redirect(url_for('horario.index'))
 
-    is_own_profile = hasattr(current_user, 'aluno_profile') and current_user.aluno_profile.id == registro.aluno_id
-    is_admin = getattr(current_user, 'role', None) in ['super_admin', 'programador', 'admin_escola']
+    context_data = HorarioService.get_edit_grid_context(pelotao, semana_id, ciclo_id, current_user)
+    
+    if not context_data.get('success'):
+        flash(context_data.get('message', 'Erro ao carregar dados para edição.'), 'danger')
+        return redirect(url_for('horario.index'))
 
-    if not (is_own_profile or is_admin):
-        flash("Você não tem permissão para realizar esta ação.", 'danger')
-        return redirect(url_for('main.dashboard'))
+    return render_template('editar_quadro_horario.html', **context_data)
 
-    form_data = request.form.to_dict()
-    # Passa a flag 'from_admin' para o serviço
-    success, message, aluno_id = HistoricoService.avaliar_aluno(historico_id, form_data, from_admin=is_admin)
 
+@horario_bp.route('/get-aula/<int:horario_id>')
+@login_required
+def get_aula_details(horario_id):
+    aula_details = HorarioService.get_aula_details(horario_id, current_user)
+    if not aula_details:
+        return jsonify({'success': False, 'message': 'Aula não encontrada ou acesso negado.'}), 404
+    
+    return jsonify({'success': True, **aula_details})
+
+
+@horario_bp.route('/salvar-aula', methods=['POST'])
+@login_required
+def salvar_aula():
+    data = request.json
+    success, message, status_code = HorarioService.save_aula(data, current_user)
+    return jsonify({'success': success, 'message': message}), status_code
+
+@horario_bp.route('/remover-aula', methods=['POST'])
+@login_required
+def remover_aula():
+    data = request.json
+    horario_id = data.get('horario_id')
+    success, message = HorarioService.remove_aula(horario_id, current_user)
+    
     if success:
-        flash(message, 'success')
+        return jsonify({'success': True, 'message': message})
     else:
-        flash(message, 'danger')
+        return jsonify({'success': False, 'message': message}), 403
 
-    if aluno_id:
-        return redirect(url_for('historico.historico_aluno', aluno_id=aluno_id))
-    else:
-        return redirect(url_for('main.dashboard'))
-
-# --- ROTAS CORRIGIDAS E ADICIONADAS ---
-
-@historico_bp.route('/atividade/adicionar/<int:aluno_id>', methods=['POST'])
+@horario_bp.route('/aprovar', methods=['GET', 'POST'])
 @login_required
 @admin_or_programmer_required
-def adicionar_atividade(aluno_id):
-    form = AtividadeForm()
+def aprovar_horarios():
+    form = AprovarHorarioForm()
     if form.validate_on_submit():
-        success, message = HistoricoService.add_atividade_aluno(aluno_id, form.data)
+        horario_id = form.horario_id.data
+        action = form.action.data
+        success, message = HorarioService.aprovar_horario(horario_id, action)
         flash(message, 'success' if success else 'danger')
-    else:
-        flash('Erro de validação no formulário.', 'danger')
-    return redirect(url_for('historico.historico_aluno', aluno_id=aluno_id))
-
-@historico_bp.route('/atividade/editar/<int:atividade_id>', methods=['POST'])
-@login_required
-@admin_or_programmer_required
-def editar_atividade(atividade_id):
-    form = AtividadeForm()
-    aluno_id = request.form.get('aluno_id')
-    if form.validate_on_submit():
-        success, message = HistoricoService.update_atividade_aluno(atividade_id, form.data)
-        flash(message, 'success' if success else 'danger')
-    else:
-        flash('Erro de validação no formulário.', 'danger')
-    return redirect(url_for('historico.historico_aluno', aluno_id=aluno_id))
-
-@historico_bp.route('/atividade/deletar/<int:atividade_id>', methods=['POST'])
-@login_required
-@admin_or_programmer_required
-def deletar_atividade(atividade_id):
-    aluno_id = request.form.get('aluno_id')
-    delete_form = DeleteForm()
-    if delete_form.validate_on_submit():
-        success, message = HistoricoService.delete_atividade_aluno(atividade_id)
-        flash(message, 'success' if success else 'danger')
-    else:
-        flash('Falha na validação do token CSRF.', 'danger')
-    return redirect(url_for('historico.historico_aluno', aluno_id=aluno_id))
+        return redirect(url_for('horario.aprovar_horarios'))
+        
+    aulas_pendentes = HorarioService.get_aulas_pendentes()
+    return render_template('aprovar_horarios.html', aulas_pendentes=aulas_pendentes, form=form)

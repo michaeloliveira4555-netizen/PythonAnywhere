@@ -18,7 +18,7 @@ class TestUserModel:
         3. A função check_password retorna False para uma senha incorreta.
         """
         # 1. Setup: Cria uma instância de User
-        u = User(username='testuser', id_func='12345')
+        u = User(username='testuser', matricula='12345')
 
         # 2. Ação: Define uma senha
         u.set_password('minhaSenhaForte123!')

@@ -1,68 +1,39 @@
 # backend/services/uniqueness.py
 import re
-from typing import Optional
+from typing import Optional, Tuple
 
-def norm_email(v: Optional[str]) -> Optional[str]:
-    return v.strip().lower() if v else None
+from sqlalchemy import select
 
-def norm_idfunc(v: Optional[str]) -> Optional[str]:
-    if not v: return None
-    return re.sub(r"\D+","", v.strip()) or None
+from backend.models.user import User
 
-def check_uniqueness(db, email: Optional[str], idfunc: Optional[str]):
+
+def norm_email(value: Optional[str]) -> Optional[str]:
+    return value.strip().lower() if value else None
+
+
+def norm_matricula(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    # Remove espaços e caracteres não numéricos por padrão
+    normalized = re.sub(r"\D+", "", value.strip())
+    return normalized or None
+
+
+def check_uniqueness(db, email: Optional[str], matricula: Optional[str]) -> Tuple[bool, str]:
     """
     Retorna (ok: bool, detalhe: str). ok=True se não encontrou conflito.
-    Ajuste os imports dos modelos conforme seu projeto.
     """
-    from backend.models import user as user_m
-    from backend.models import instrutor as instrutor_m
-    from backend.models import aluno as aluno_m
-    from backend.models import pre_cadastro as precad_m
-    from backend.models import usuario_orfao as orfao_m
+    email_norm = norm_email(email)
+    matricula_norm = norm_matricula(matricula)
 
-    email_n = norm_email(email)
-    idfunc_n = norm_idfunc(idfunc)
+    if email_norm:
+        exists_email = db.session.scalar(select(User).where(User.email == email_norm))
+        if exists_email:
+            return False, 'E-mail já está em uso na tabela de usuários.'
 
-    # Usuario
-    if hasattr(user_m, "User"):
-        q = db.session.query(user_m.User)
-        if email_n and hasattr(user_m.User, "email"):
-            if q.filter(user_m.User.email == email_n).first():
-                return False, "E-mail já está em uso na tabela de usuários."
-        if idfunc_n and hasattr(user_m.User, "id_func"):
-            if db.session.query(user_m.User).filter(user_m.User.id_func == idfunc_n).first():
-                return False, "ID Func já está em uso na tabela de usuários."
+    if matricula_norm:
+        exists_matricula = db.session.scalar(select(User).where(User.matricula == matricula_norm))
+        if exists_matricula:
+            return False, 'Matrícula já está em uso na tabela de usuários.'
 
-    # Instrutor
-    if hasattr(instrutor_m, "Instrutor"):
-        if idfunc_n and hasattr(instrutor_m.Instrutor, "id_func"):
-            if db.session.query(instrutor_m.Instrutor).filter(instrutor_m.Instrutor.id_func == idfunc_n).first():
-                return False, "ID Func já está em uso na tabela de instrutores."
-
-    # Aluno
-    if hasattr(aluno_m, "Aluno"):
-        if idfunc_n and hasattr(aluno_m.Aluno, "id_func"):
-            if db.session.query(aluno_m.Aluno).filter(aluno_m.Aluno.id_func == idfunc_n).first():
-                return False, "ID Func já está em uso na tabela de alunos."
-
-    # Pré-cadastro
-    if hasattr(precad_m, "PreCadastro"):
-        q = db.session.query(precad_m.PreCadastro)
-        if email_n and hasattr(precad_m.PreCadastro, "email"):
-            if q.filter(precad_m.PreCadastro.email == email_n).first():
-                return False, "E-mail já está reservado em pré-cadastro."
-        if idfunc_n and hasattr(precad_m.PreCadastro, "id_func"):
-            if db.session.query(precad_m.PreCadastro).filter(precad_m.PreCadastro.id_func == idfunc_n).first():
-                return False, "ID Func já está reservado em pré-cadastro."
-
-    # Usuário órfão
-    if hasattr(orfao_m, "UsuarioOrfao"):
-        q = db.session.query(orfao_m.UsuarioOrfao)
-        if email_n and hasattr(orfao_m.UsuarioOrfao, "email"):
-            if q.filter(orfao_m.UsuarioOrfao.email == email_n).first():
-                return False, "E-mail presente em usuários órfãos."
-        if idfunc_n and hasattr(orfao_m.UsuarioOrfao, "id_func"):
-            if db.session.query(orfao_m.UsuarioOrfao).filter(orfao_m.UsuarioOrfao.id_func == idfunc_n).first():
-                return False, "ID Func presente em usuários órfãos."
-
-    return True, "OK"
+    return True, 'OK'

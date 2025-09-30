@@ -20,7 +20,7 @@
                     <tr>
                         <th>Nome Completo</th>
                         {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
-                        <th>Id Func.</th>
+                        <th>Matrícula</th>
                         {% endif %}
                     </tr>
                 </thead>
@@ -29,7 +29,7 @@
                     <tr>
                         <td>{{ aluno.user.nome_completo or aluno.user.username }}</td>
                         {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
-                        <td>{{ aluno.user.id_func }}</td>
+                        <td>{{ aluno.user.matricula }}</td>
                         {% endif %}
                     </tr>
                     {% else %}

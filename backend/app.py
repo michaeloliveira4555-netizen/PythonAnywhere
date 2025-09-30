@@ -1,6 +1,7 @@
 # backend/app.py
 
 import os
+from importlib import import_module
 from flask import Flask, render_template
 import click
 from flask_login import LoginManager
@@ -74,45 +75,42 @@ def create_app(config_class=Config):
     register_cli_commands(app)
     return app
 
-def register_blueprints(app):
-    """Importa e registra os blueprints na aplicação."""
-    from backend.controllers.auth_controller import auth_bp
-    from backend.controllers.aluno_controller import aluno_bp
-    from backend.controllers.instrutor_controller import instrutor_bp
-    from backend.controllers.disciplina_controller import disciplina_bp
-    from backend.controllers.historico_controller import historico_bp
-    from backend.controllers.main_controller import main_bp
-    from backend.controllers.assets_controller import assets_bp
-    from backend.controllers.customizer_controller import customizer_bp
-    from backend.controllers.horario_controller import horario_bp
-    from backend.controllers.semana_controller import semana_bp
-    from backend.controllers.turma_controller import turma_bp
-    from backend.controllers.vinculo_controller import vinculo_bp
-    from backend.controllers.user_controller import user_bp
-    from backend.controllers.relatorios_controller import relatorios_bp
-    from backend.controllers.super_admin_controller import super_admin_bp
-    from backend.controllers.admin_controller import admin_escola_bp
-    from backend.controllers.questionario_controller import questionario_bp
-
-    # O prefixo da URL já está definido dentro de cada blueprint
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(aluno_bp)
-    app.register_blueprint(instrutor_bp)
-    app.register_blueprint(disciplina_bp)
-    app.register_blueprint(historico_bp)
-    app.register_blueprint(assets_bp)
-    app.register_blueprint(customizer_bp)
-    app.register_blueprint(main_bp)
-    app.register_blueprint(horario_bp)
-    app.register_blueprint(semana_bp)
-    app.register_blueprint(turma_bp)
-    app.register_blueprint(vinculo_bp)
-    app.register_blueprint(user_bp)
-    app.register_blueprint(relatorios_bp)
-    app.register_blueprint(super_admin_bp)
-    app.register_blueprint(admin_escola_bp)
-    app.register_blueprint(questionario_bp)
-
+def register_blueprints(app):
+    """Importa e registra os blueprints na aplicação."""
+
+    def _register(module_path: str, blueprint_name: str) -> None:
+        module = import_module(module_path)
+        blueprint = getattr(module, blueprint_name, None)
+        if blueprint is None:
+            app.logger.warning(
+                "Blueprint '%s' não encontrado no módulo '%s'. Registro ignorado.",
+                blueprint_name,
+                module_path,
+            )
+            return
+        app.register_blueprint(blueprint)
+
+    for module_path, blueprint_name in [
+        ('backend.controllers.auth_controller', 'auth_bp'),
+        ('backend.controllers.aluno_controller', 'aluno_bp'),
+        ('backend.controllers.instrutor_controller', 'instrutor_bp'),
+        ('backend.controllers.disciplina_controller', 'disciplina_bp'),
+        ('backend.controllers.historico_controller', 'historico_bp'),
+        ('backend.controllers.main_controller', 'main_bp'),
+        ('backend.controllers.assets_controller', 'assets_bp'),
+        ('backend.controllers.customizer_controller', 'customizer_bp'),
+        ('backend.controllers.horario_controller', 'horario_bp'),
+        ('backend.controllers.semana_controller', 'semana_bp'),
+        ('backend.controllers.turma_controller', 'turma_bp'),
+        ('backend.controllers.vinculo_controller', 'vinculo_bp'),
+        ('backend.controllers.user_controller', 'user_bp'),
+        ('backend.controllers.relatorios_controller', 'relatorios_bp'),
+        ('backend.controllers.super_admin_controller', 'super_admin_bp'),
+        ('backend.controllers.admin_controller', 'admin_escola_bp'),
+        ('backend.controllers.questionario_controller', 'questionario_bp'),
+    ]:
+        _register(module_path, blueprint_name)
+
 def register_handlers_and_processors(app):
     """Registra hooks, context processors e error handlers."""
     @app.context_processor

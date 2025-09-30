@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, MetaData, select, and_
 from sqlalchemy.exc import SQLAlchemyError
 
 """
-Diagnóstico de “registro fantasma” para e-mail e/ou ID Func,
+Diagnóstico de “registro fantasma” para e-mail e/ou Matrícula,
 sem depender de importar o objeto `db` do projeto.
 
 COMO USAR:
@@ -18,10 +18,10 @@ COMO USAR:
   # vá para a raiz do projeto
   cd /home/esfasBM/sistema_escolar_deepseak_1
 
-  # execute com seu e-mail e/ou idfunc (use UM valor após --idfunc)
+  # execute com seu e-mail e/ou matricula (use UM valor após --matricula)
   python -m backend.maintenance.find_user_conflicts --email fulano@bm.rs.gov.br
-  python -m backend.maintenance.find_user_conflicts --idfunc 2277409
-  python -m backend.maintenance.find_user_conflicts --email fulano@bm.rs.gov.br --idfunc 2277409
+  python -m backend.maintenance.find_user_conflicts --matricula 2277409
+  python -m backend.maintenance.find_user_conflicts --email fulano@bm.rs.gov.br --matricula 2277409
 """
 
 # ---------- utilidades de caminho/app ----------
@@ -74,7 +74,7 @@ def norm_email(v: str | None) -> str | None:
         return None
     return v.strip().lower()
 
-def norm_idfunc(v: str | None) -> str | None:
+def norm_matricula(v: str | None) -> str | None:
     if not v:
         return None
     return re.sub(r"\D+", "", v.strip()) or None
@@ -94,18 +94,18 @@ TABLE_CANDIDATES = [
 ]
 
 COLUMNS_OF_INTEREST = [
-    "id", "email", "id_func", "role", "is_active", "soft_deleted",
+    "id", "email", "matricula", "role", "is_active", "soft_deleted",
     "status", "escola_id", "usuario_id", "ativo", "created_at",
 ]
 
-def build_filters(table, email_n, idfunc_n):
+def build_filters(table, email_n, matricula_n):
     filters = []
     cols = table.c.keys()
 
     if email_n and "email" in cols:
         filters.append(table.c.email == email_n)
-    if idfunc_n and "id_func" in cols:
-        filters.append(table.c.id_func == idfunc_n)
+    if matricula_n and "matricula" in cols:
+        filters.append(table.c.matricula == matricula_n)
 
     # Se nenhum filtro aplicável existir, evita SELECT FULL TABLE
     if not filters:
@@ -129,7 +129,7 @@ def main():
 
     # parse args
     email = None
-    idfunc = None
+    matricula = None
     args = sys.argv[1:]
     i = 0
     while i < len(args):
@@ -138,17 +138,17 @@ def main():
             email = args[i + 1]
             i += 2
             continue
-        if a == "--idfunc" and i + 1 < len(args):
-            idfunc = args[i + 1]
+        if a == "--matricula" and i + 1 < len(args):
+            matricula = args[i + 1]
             i += 2
             continue
         i += 1
 
     email_n = norm_email(email) if email else None
-    idfunc_n = norm_idfunc(idfunc) if idfunc else None
+    matricula_n = norm_matricula(matricula) if matricula else None
 
-    if not email_n and not idfunc_n:
-        print("Uso: python -m backend.maintenance.find_user_conflicts --email EMAIL --idfunc 123456")
+    if not email_n and not matricula_n:
+        print("Uso: python -m backend.maintenance.find_user_conflicts --email EMAIL --matricula 123456")
         sys.exit(1)
 
     # carrega app só para ler a URI do banco
@@ -173,8 +173,8 @@ def main():
     print("=== PROCURANDO CONFLITOS ===")
     if email_n:
         print(f"- Email (normalizado): {email_n}")
-    if idfunc_n:
-        print(f"- ID Func (normalizado): {idfunc_n}")
+    if matricula_n:
+        print(f"- Matrícula (normalizado): {matricula_n}")
     print("")
 
     # percorre tabelas candidatas que realmente existirem
@@ -187,7 +187,7 @@ def main():
                 # ex.: users, user; instrutor, instructor etc. (personalize se quiser)
                 continue
 
-            filt = build_filters(table, email_n, idfunc_n)
+            filt = build_filters(table, email_n, matricula_n)
             if filt is None:
                 continue
 

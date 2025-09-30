@@ -13,6 +13,7 @@ from backend.models.turma import Turma
 from backend.models.disciplina import Disciplina
 from backend.models.disciplina_turma import DisciplinaTurma
 from backend.models.semana import Semana
+from backend.models.ciclo import Ciclo
 from backend.models.horario import Horario
 from backend.models.database import db
 
@@ -49,24 +50,28 @@ class TestWorkflow:
 
             # ETAPA B: Criar entidades que dependem da Escola.
             turma = Turma(nome="Pelotao-Workflow", ano=2025, school_id=school.id)
-            disciplina = Disciplina(materia="Teste de Workflow", carga_horaria_prevista=20, school_id=school.id, ciclo=1)
-            semana = Semana(nome="Semana Workflow", data_inicio=date.today(), data_fim=date.today() + timedelta(days=6), ciclo=1)
-            db.session.add_all([turma, disciplina, semana])
+            ciclo = Ciclo(nome="Ciclo Workflow")
+            db.session.add_all([turma, ciclo])
+            db.session.commit()
+
+            disciplina = Disciplina(materia="Teste de Workflow", carga_horaria_prevista=20, school_id=school.id, ciclo_id=ciclo.id)
+            semana = Semana(nome="Semana Workflow", data_inicio=date.today(), data_fim=date.today() + timedelta(days=6), ciclo_id=ciclo.id)
+            db.session.add_all([disciplina, semana])
             db.session.commit()
 
             # ETAPA C: Criar os usuários.
-            instrutor_user = User(id_func='instrutor_wf', nome_de_guerra='Sgt Workflow', role='instrutor', is_active=True)
+            instrutor_user = User(matricula='instrutor_wf', nome_de_guerra='Sgt Workflow', role='instrutor', is_active=True)
             instrutor_user.set_password('pass1')
-            admin_user = User(id_func='admin_wf', nome_de_guerra='Ten Workflow', role='admin_escola', is_active=True)
+            admin_user = User(matricula='admin_wf', nome_de_guerra='Ten Workflow', role='admin_escola', is_active=True)
             admin_user.set_password('pass2')
-            aluno_user = User(id_func='aluno_wf', nome_de_guerra='Sd Workflow', role='aluno', is_active=True)
+            aluno_user = User(matricula='aluno_wf', nome_de_guerra='Sd Workflow', role='aluno', is_active=True)
             aluno_user.set_password('pass3')
             db.session.add_all([instrutor_user, admin_user, aluno_user])
             db.session.commit()
 
             # ETAPA D: Criar os perfis e associações finais.
-            instrutor = Instrutor(user_id=instrutor_user.id, matricula='instrutor_wf', especializacao='Testes', formacao='TI')
-            aluno = Aluno(user_id=aluno_user.id, matricula='aluno_wf', opm='EsFAS', turma_id=turma.id)
+            instrutor = Instrutor(user_id=instrutor_user.id, posto_graduacao='Sargento', telefone=None)
+            aluno = Aluno(user_id=aluno_user.id, opm='EsFAS', turma_id=turma.id)
             db.session.add_all([instrutor, aluno])
             db.session.commit()
             
@@ -79,27 +84,28 @@ class TestWorkflow:
             db.session.add(vinculo)
             db.session.commit()
 
-            # --- 2. AÇÃO DO INSTRUTOR ---
-            test_client.post('/auth/login', data={'username': 'instrutor_wf', 'password': 'pass1'})
-            aula_data = {'pelotao': turma.nome, 'semana_id': semana.id, 'dia': 'segunda', 'periodo': 3, 'disciplina_id': disciplina.id, 'duracao': 2}
-            response_instrutor = test_client.post('/horario/salvar-aula', json=aula_data)
-            assert response_instrutor.status_code == 200
-            aula_criada = db.session.scalar(select(Horario).where(Horario.pelotao == turma.nome))
-            assert aula_criada is not None
-            assert aula_criada.status == 'pendente'
-            test_client.get('/auth/logout')
+            # --- 2. Fluxo com sessões autenticadas ---
+            with test_client as client:
+                client.post('/login', data={'username': 'instrutor_wf', 'password': 'pass1'}, follow_redirects=True)
+                with client.session_transaction() as sess:
+                    assert sess.get('_user_id') == str(instrutor_user.id)
+                aula_data = {'pelotao': turma.nome, 'semana_id': semana.id, 'dia': 'segunda', 'periodo': 3, 'disciplina_id': disciplina.id, 'duracao': 2}
+                response_instrutor = client.post('/horario/salvar-aula', json=aula_data)
+                assert response_instrutor.status_code == 200
+                aula_criada = db.session.scalar(select(Horario).where(Horario.pelotao == turma.nome))
+                assert aula_criada is not None
+                assert aula_criada.status == 'pendente'
+                client.get('/logout', follow_redirects=True)
 
-            # --- 3. AÇÃO DO ADMINISTRADOR ---
-            test_client.post('/auth/login', data={'username': 'admin_wf', 'password': 'pass2'})
-            response_admin = test_client.post('/horario/aprovar', data={'horario_id': aula_criada.id, 'action': 'aprovar'})
-            assert response_admin.status_code == 302
-            db.session.refresh(aula_criada)
-            assert aula_criada.status == 'confirmado'
-            test_client.get('/auth/logout')
+                client.post('/login', data={'username': 'admin_wf', 'password': 'pass2'}, follow_redirects=True)
+                response_admin = client.post('/horario/aprovar', data={'horario_id': aula_criada.id, 'action': 'aprovar'})
+                assert response_admin.status_code == 302
+                db.session.refresh(aula_criada)
+                assert aula_criada.status == 'confirmado'
+                client.get('/logout', follow_redirects=True)
 
-            # --- 4. VERIFICAÇÃO DO ALUNO ---
-            test_client.post('/auth/login', data={'username': 'aluno_wf', 'password': 'pass3'})
-            response_aluno = test_client.get(f'/horario/{turma.nome}?semana_id={semana.id}')
-            assert response_aluno.status_code == 200
-            assert b'Teste de Workflow' in response_aluno.data
-            assert b'Sgt Workflow' in response_aluno.data
+                client.post('/login', data={'username': 'aluno_wf', 'password': 'pass3'}, follow_redirects=True)
+                response_aluno = client.get('/horario/', query_string={'pelotao': turma.nome, 'semana_id': semana.id})
+                assert response_aluno.status_code == 200
+                assert b'Teste de Workflow' in response_aluno.data
+                assert b'Sgt Workflow' in response_aluno.data

@@ -114,7 +114,7 @@
                 {% for disciplina in instrutor_data.disciplinas %}
                     <tr>
                         <td>{{ instrutor_data.info.posto_graduacao or 'N/D' }}</td>
-                        <td>{{ instrutor_data.info.user.id_func }}</td>
+                        <td>{{ instrutor_data.info.user.matricula }}</td>
                         <td class="text-left">{{ instrutor_data.info.user.nome_completo }}</td>
                         <td class="text-left">{{ disciplina.nome }}</td>
                         <td>{{ disciplina.ch_total }}</td>

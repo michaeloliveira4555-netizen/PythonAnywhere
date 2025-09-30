@@ -72,7 +72,7 @@ class MeuPerfilForm(FlaskForm):
 def norm_email(v: Optional[str]) -> Optional[str]:
     return v.strip().lower() if v else None
 
-def norm_idfunc(v: Optional[str]) -> Optional[str]:
+def norm_matricula(v: Optional[str]) -> Optional[str]:
     if not v:
         return None
     return re.sub(r"\D+", "", v.strip()) or None
@@ -195,7 +195,7 @@ def criar_admin_escola():
         try:
             nome = (request.form.get("nome") or "").strip()
             email = norm_email(request.form.get("email"))
-            id_func = norm_idfunc(request.form.get("id_func"))
+            matricula = norm_matricula(request.form.get("matricula"))
             telefone = (request.form.get("telefone") or "").strip()
 
             if not nome:
@@ -204,8 +204,8 @@ def criar_admin_escola():
             if not email:
                 flash("Informe um e-mail válido.", "warning")
                 return redirect(url_for("user.criar_admin_escola"))
-            if not id_func:
-                flash("Informe a ID Func (apenas números).", "warning")
+            if not matricula:
+                flash("Informe a Matrícula (apenas números).", "warning")
                 return redirect(url_for("user.criar_admin_escola"))
             if not escola_id:
                 flash("Não foi possível identificar a escola do usuário atual.", "danger")
@@ -214,12 +214,12 @@ def criar_admin_escola():
             base_username = (email.split("@")[0] if "@" in email else email)
             username = generate_unique_username(base_username)
 
-            # Checagens duras em email / id_func
+            # Checagens duras em email / matricula
             if exists_in_users_by("email", email):
                 flash("E-mail já está em uso na tabela de usuários.", "warning")
                 return redirect(url_for("user.criar_admin_escola"))
-            if exists_in_users_by("id_func", id_func):
-                flash("ID Func já está em uso na tabela de usuários.", "warning")
+            if exists_in_users_by("matricula", matricula):
+                flash("Matrícula já está em uso na tabela de usuários.", "warning")
                 return redirect(url_for("user.criar_admin_escola"))
             # (username a gente já resolveu automaticamente acima)
 
@@ -230,12 +230,12 @@ def criar_admin_escola():
                 # Inserção direta por SQL
                 insert_sql = """
                     INSERT INTO users
-                        (id_func, username, email, password_hash, nome_completo, role, is_active, must_change_password)
+                        (matricula, username, email, password_hash, nome_completo, role, is_active, must_change_password)
                     VALUES
-                        (:id_func, :username, :email, :password_hash, :nome, :role, 1, 1)
+                        (:matricula, :username, :email, :password_hash, :nome, :role, 1, 1)
                 """
                 db.session.execute(text(insert_sql), {
-                    "id_func": id_func,
+                    "matricula": matricula,
                     "username": username,
                     "email": email,
                     "password_hash": password_hash,
@@ -250,7 +250,7 @@ def criar_admin_escola():
 
             # ORM
             user = User()  # type: ignore
-            if hasattr(user, "id_func"): user.id_func = id_func  # type: ignore
+            if hasattr(user, "matricula"): user.matricula = matricula  # type: ignore
             if hasattr(user, "username"): user.username = username  # type: ignore
             if hasattr(user, "email"): user.email = email  # type: ignore
             if hasattr(user, "nome_completo"): user.nome_completo = nome  # type: ignore
@@ -273,8 +273,8 @@ def criar_admin_escola():
             msg = str(ie.orig) if getattr(ie, "orig", None) else str(ie)
             if "email" in msg.lower():
                 flash("Conflito: e-mail já cadastrado.", "danger")
-            elif "id_func" in msg.lower():
-                flash("Conflito: ID Func já cadastrada.", "danger")
+            elif "matricula" in msg.lower():
+                flash("Conflito: Matrícula já cadastrada.", "danger")
             elif "username" in msg.lower():
                 flash("Conflito de username. Tente novamente.", "danger")
             else:

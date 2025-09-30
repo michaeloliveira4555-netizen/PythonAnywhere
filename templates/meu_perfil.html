@@ -14,8 +14,8 @@
         <form method="POST" action="{{ url_for('user.meu_perfil') }}">
             {{ form.hidden_tag() }}
             <div class="form-group">
-                <label for="id_func">Identidade Funcional / Matrícula</label>
-                <input type="text" id="id_func" name="id_func" class="form-control" value="{{ current_user.id_func }}" readonly>
+                <label for="matricula">Matrícula</label>
+                <input type="text" id="matricula" name="matricula" class="form-control" value="{{ current_user.matricula }}" readonly>
                 <small class="form-text text-muted">Este campo não pode ser alterado.</small>
             </div>
 
