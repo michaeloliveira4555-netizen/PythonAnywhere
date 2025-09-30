@@ -13,14 +13,19 @@
                     {% if aula.instrutor %}
                     <div class="instrutor-name">{{ aula.instrutor }}</div>
                     {% endif %}
+
+                    {# --- OBSERVAÇÃO EXIBIDA AQUI --- #}
+                    {% if aula.observacao %}
+                    <div class="slot-observacao">{{ aula.observacao }}</div>
+                    {% endif %}
                 </div>
 
-                {% if aula.can_edit %}
+                {% if aula.can_edit and not aula.is_continuation %}
                 <div class="slot-actions">
                     <button class="btn-icon" data-action="edit" data-id="{{ aula.id }}" title="Editar Aula">✏️</button>
                     <button class="btn-icon" data-action="delete" data-id="{{ aula.id }}" title="Remover Aula">🗑️</button>
                 </div>
-                {% else %}
+                {% elif not aula.can_edit and not aula.is_continuation %}
                 <div class="slot-actions">
                     <span class="no-permission" title="Você não pode editar esta aula">🔒</span>
                 </div>

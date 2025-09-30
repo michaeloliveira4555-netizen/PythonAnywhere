@@ -29,10 +29,10 @@
             <table class="table-styled">
                 <thead>
                     <tr>
+                        <th>Posto/Graduação</th>
+                        <th>Nome Completo</th>
                         <th>Matrícula</th>
                         <th>Nome de Guerra</th>
-                        <th>Nome Completo</th>
-                        <th>Posto/Graduação</th>
                         <th>E-mail</th>
                         {% if current_user.role in ['programador', 'admin_escola'] %}
                         <th class="text-right">Ações</th>
@@ -42,10 +42,10 @@
                 <tbody>
                     {% for instrutor in instrutores %}
                     <tr>
+                        <td data-label="Posto/Graduação">{{ instrutor.user.posto_graduacao or 'N/D' }}</td>
+                        <td data-label="Nome Completo">{{ instrutor.user.nome_completo if instrutor.user else 'N/A' }}</td>
                         <td data-label="Matrícula">{{ instrutor.user.matricula if instrutor.user else 'N/A' }}</td>
                         <td data-label="Nome de Guerra">{{ instrutor.user.nome_de_guerra if instrutor.user else 'N/A' }}</td>
-                        <td data-label="Nome Completo">{{ instrutor.user.nome_completo if instrutor.user else 'N/A' }}</td>
-                        <td data-label="Posto/Graduação">{{ instrutor.posto_graduacao or 'N/D' }}</td>
                         <td data-label="Email">{{ instrutor.user.email if instrutor.user else 'N/A' }}</td>
                         {% if current_user.role in ['programador', 'admin_escola'] %}
                         <td data-label="Ações" class="text-right">

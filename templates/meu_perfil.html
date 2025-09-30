@@ -30,6 +30,11 @@
             </div>
 
             <div class="form-group">
+                {{ form.posto_graduacao.label }}
+                {{ form.posto_graduacao(class="form-control") }}
+            </div>
+
+            <div class="form-group">
                 {{ form.email.label }}
                 {{ form.email(class="form-control") }}
             </div>
@@ -43,14 +48,6 @@
              <div class="form-group">
                 <label for="telefone">Telefone</label>
                 <input type="text" id="telefone" name="telefone" class="form-control" value="{{ current_user.instrutor_profile.telefone or '' }}">
-            </div>
-            <div class="form-group">
-                <label for="credor">Credor (para fins de pagamento)</label>
-                <input type="text" id="credor" name="credor" class="form-control" value="{{ current_user.instrutor_profile.credor or '' }}">
-            </div>
-            <div class="form-group">
-                <label for="posto_graduacao">Posto/Graduação</label>
-                <input type="text" id="posto_graduacao" name="posto_graduacao" class="form-control" value="{{ current_user.instrutor_profile.posto_graduacao or '' }}">
             </div>
             {% endif %}
 

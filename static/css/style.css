@@ -1013,3 +1013,15 @@ body.weekend-panel-open .weekend-toggle-btn { right: 450px; }
         background-color: var(--color-secondary);
     }
 }
+/* Adicione ao final de static/css/style.css */
+
+.slot-observacao {
+    font-style: italic;
+    font-size: 0.75rem;
+    color: #4b5563; /* Um cinza um pouco mais escuro */
+    margin-top: 4px;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

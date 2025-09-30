@@ -51,10 +51,10 @@
             <table class="table-styled">
                 <thead>
                     <tr>
+                        <th>Posto/Graduação</th>
+                        <th>Nome Completo</th>
                         <th>Matrícula</th>
-                        <th>Nome</th>
                         <th>Turma</th>
-                        <th>Email</th>
                         <th>Função Atual</th>
                         <th class="text-right">Ações</th>
                     </tr>
@@ -62,10 +62,10 @@
                 <tbody>
                     {% for aluno in alunos %}
                     <tr>
-                        <td data-label="Matrícula">{{ aluno.user.matricula if aluno.user else 'N/A' }}</td>
+                        <td data-label="Posto/Graduação">{{ aluno.user.posto_graduacao if aluno.user else 'N/A' }}</td>
                         <td data-label="Nome">{{ aluno.user.nome_completo or aluno.user.username }}</td>
+                        <td data-label="Matrícula">{{ aluno.user.matricula if aluno.user else 'N/A' }}</td>
                         <td data-label="Turma">{{ aluno.turma.nome if aluno.turma else 'Sem Turma' }}</td>
-                        <td data-label="Email">{{ aluno.user.email }}</td>
                         <td data-label="Função">{{ aluno.funcao_atual if aluno.funcao_atual else 'N/A' }}</td>
                         <td data-label="Ações" class="text-right">
                             <div class="btn-group">
