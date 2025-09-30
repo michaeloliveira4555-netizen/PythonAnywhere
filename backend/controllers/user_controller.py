@@ -22,7 +22,8 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField
+# --- SelectField ADICIONADO ---
+from wtforms import StringField, PasswordField, SubmitField, SelectField
 from wtforms.validators import DataRequired, Email, EqualTo, Optional
 
 # ===== DB =====
@@ -58,10 +59,19 @@ UserSchool = _import_first([
 
 user_bp = Blueprint("user", __name__, url_prefix="/user")
 
-# ===== Forms =====
+# ===== Forms (FORMULÁRIO ATUALIZADO) =====
 class MeuPerfilForm(FlaskForm):
     nome_completo = StringField('Nome Completo', validators=[DataRequired()])
     email = StringField('E-mail', validators=[DataRequired(), Email()])
+    
+    # --- CAMPO ALTERADO PARA SelectField ---
+    posto_graduacao = SelectField('Posto/Graduação', choices=[
+        ('Soldado', 'Soldado'), ('Cabo', 'Cabo'), ('3º Sargento', '3º Sargento'),
+        ('2º Sargento', '2º Sargento'), ('1º Sargento', '1º Sargento'),
+        ('Tenente', 'Tenente'), ('Capitão', 'Capitão'), ('Major', 'Major'),
+        ('Tenente-Coronel', 'Tenente-Coronel'), ('Coronel', 'Coronel')
+    ], validators=[DataRequired()])
+
     current_password = PasswordField('Senha Atual', validators=[Optional()])
     new_password = PasswordField('Nova Senha', validators=[Optional(), EqualTo('confirm_new_password', message='As senhas não correspondem.')])
     confirm_new_password = PasswordField('Confirmar Nova Senha', validators=[Optional()])
@@ -132,7 +142,7 @@ def insert_user_school(user_id: int, school_id: int, role: str):
         "created_at": datetime.utcnow(),
     })
 
-# ===== Meu Perfil =====
+# ===== Meu Perfil (ROTA ATUALIZADA) =====
 @user_bp.route("/meu-perfil", methods=["GET", "POST"])
 @login_required
 def meu_perfil():
@@ -140,6 +150,8 @@ def meu_perfil():
     if form.validate_on_submit():
         try:
             current_user.nome_completo = form.nome_completo.data
+            # --- ATUALIZAÇÃO DO POSTO/GRADUAÇÃO ---
+            current_user.posto_graduacao = form.posto_graduacao.data
             
             # Verifica se o email foi alterado e se já existe
             if form.email.data != current_user.email:
@@ -214,20 +226,17 @@ def criar_admin_escola():
             base_username = (email.split("@")[0] if "@" in email else email)
             username = generate_unique_username(base_username)
 
-            # Checagens duras em email / id_func
             if exists_in_users_by("email", email):
                 flash("E-mail já está em uso na tabela de usuários.", "warning")
                 return redirect(url_for("user.criar_admin_escola"))
             if exists_in_users_by("id_func", id_func):
                 flash("ID Func já está em uso na tabela de usuários.", "warning")
                 return redirect(url_for("user.criar_admin_escola"))
-            # (username a gente já resolveu automaticamente acima)
 
             temp_pass = secrets.token_urlsafe(8)
             password_hash = generate_password_hash(temp_pass)
 
             if User is None:
-                # Inserção direta por SQL
                 insert_sql = """
                     INSERT INTO users
                         (id_func, username, email, password_hash, nome_completo, role, is_active, must_change_password)
@@ -248,15 +257,14 @@ def criar_admin_escola():
                 flash(f"Administrador criado com sucesso. Username: {username} • Senha temporária: {temp_pass}", "success")
                 return redirect(url_for("user.lista_admins_escola"))
 
-            # ORM
-            user = User()  # type: ignore
-            if hasattr(user, "id_func"): user.id_func = id_func  # type: ignore
-            if hasattr(user, "username"): user.username = username  # type: ignore
-            if hasattr(user, "email"): user.email = email  # type: ignore
-            if hasattr(user, "nome_completo"): user.nome_completo = nome  # type: ignore
-            if hasattr(user, "role"): user.role = "admin_escola"  # type: ignore
-            if hasattr(user, "is_active"): user.is_active = True  # type: ignore
-            if hasattr(user, "must_change_password"): user.must_change_password = True  # type: ignore
+            user = User()
+            if hasattr(user, "id_func"): user.id_func = id_func
+            if hasattr(user, "username"): user.username = username
+            if hasattr(user, "email"): user.email = email
+            if hasattr(user, "nome_completo"): user.nome_completo = nome
+            if hasattr(user, "role"): user.role = "admin_escola"
+            if hasattr(user, "is_active"): user.is_active = True
+            if hasattr(user, "must_change_password"): user.must_change_password = True
 
             set_password_hash_on_user(user, temp_pass)
 
@@ -290,7 +298,6 @@ def criar_admin_escola():
 @user_bp.route("/admins", methods=["GET"])
 @login_required
 def lista_admins_escola():
-    # lista por SQL simples (funciona com ou sem ORM de vínculo)
     rows = db.session.execute(text("""
         SELECT u.*
         FROM users u

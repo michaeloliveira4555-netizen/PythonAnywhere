@@ -31,8 +31,8 @@ class HorarioService:
 
     @staticmethod
     def construir_matriz_horario(pelotao, semana_id, user):
-        """Constrói a matriz 15x7 para exibir o quadro de horários."""
-        a_disposicao = {'materia': 'A disposição', 'instrutor': None, 'duracao': 1, 'is_disposicao': True, 'id': None, 'status': 'confirmado'}
+        """Constrói a matriz 15x7 para exibir o quadro de horários, pulando os intervalos."""
+        a_disposicao = {'materia': 'A disposição do C Al /S Ens', 'instrutor': None, 'duracao': 1, 'is_disposicao': True, 'id': None, 'status': 'confirmado'}
         horario_matrix = [[dict(a_disposicao) for _ in range(7)] for _ in range(15)]
         dias = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo']
         
@@ -46,34 +46,61 @@ class HorarioService:
         for aula in aulas:
             try:
                 dia_idx = dias.index(aula.dia_semana)
-                periodo_idx = aula.periodo - 1
-                if 0 <= periodo_idx < 15 and 0 <= dia_idx < 7:
-                    can_see_details = HorarioService.can_edit_horario(aula, user)
+                
+                periodos_processados = 0
+                periodo_inicial_bloco = aula.periodo
+                is_continuation = False
 
+                while periodos_processados < aula.duracao:
+                    periodo_atual_idx = periodo_inicial_bloco - 1
+                    periodos_restantes = aula.duracao - periodos_processados
+
+                    duracao_bloco = 0
+                    if periodo_inicial_bloco <= 3:
+                        max_periodos_neste_bloco = 3 - periodo_inicial_bloco + 1
+                        duracao_bloco = min(periodos_restantes, max_periodos_neste_bloco)
+                    elif periodo_inicial_bloco <= 9:
+                        max_periodos_neste_bloco = 9 - periodo_inicial_bloco + 1
+                        duracao_bloco = min(periodos_restantes, max_periodos_neste_bloco)
+                    else:
+                        duracao_bloco = periodos_restantes
+                    
+                    if duracao_bloco <= 0: break 
+
+                    can_see_details = HorarioService.can_edit_horario(aula, user)
                     instrutor_nome = "N/D"
                     if aula.instrutor and aula.instrutor.user:
                         instrutor_nome = aula.instrutor.user.nome_de_guerra or aula.instrutor.user.username
-                    
+
                     aula_info = {
                         'id': aula.id,
                         'materia': aula.disciplina.materia if aula.status == 'confirmado' or can_see_details else 'Aguardando Aprovação',
                         'instrutor': instrutor_nome if aula.status == 'confirmado' or can_see_details else None,
-                        'duracao': aula.duracao,
+                        'observacao': aula.observacao, # --- CAMPO NOVO ADICIONADO ---
+                        'duracao': duracao_bloco,
                         'status': aula.status,
                         'is_disposicao': False,
                         'can_edit': can_see_details,
+                        'is_continuation': is_continuation
                     }
-                    horario_matrix[periodo_idx][dia_idx] = aula_info
-                    for i in range(1, aula.duracao):
-                        if (periodo_idx + i) < 15:
-                            horario_matrix[periodo_idx + i][dia_idx] = 'SKIP'
+                    
+                    if 0 <= periodo_atual_idx < 15:
+                        horario_matrix[periodo_atual_idx][dia_idx] = aula_info
+                        for i in range(1, duracao_bloco):
+                            if (periodo_atual_idx + i) < 15:
+                                horario_matrix[periodo_atual_idx + i][dia_idx] = 'SKIP'
+
+                    periodos_processados += duracao_bloco
+                    periodo_inicial_bloco += duracao_bloco
+                    is_continuation = True
+
             except (ValueError, IndexError):
                 continue
         return horario_matrix
 
     @staticmethod
     def get_semana_selecionada(semana_id_str, ciclo_id):
-        """Determina qual semana deve ser exibida, com base na seleção ou na data atual."""
+        # ... (código existente sem alterações)
         if semana_id_str and semana_id_str.isdigit():
             return db.session.get(Semana, int(semana_id_str))
         
@@ -94,7 +121,7 @@ class HorarioService:
 
     @staticmethod
     def get_datas_da_semana(semana):
-        """Retorna um dicionário com as datas formatadas para cada dia da semana."""
+        # ... (código existente sem alterações)
         if not semana:
             return {}
         datas = {}
@@ -104,15 +131,13 @@ class HorarioService:
             datas[dia_nome] = data_calculada.strftime('%d/%m')
         return datas
 
-    # --- FUNÇÃO MODIFICADA PARA INCLUIR CARGA HORÁRIA RESTANTE ---
     @staticmethod
     def get_edit_grid_context(pelotao, semana_id, ciclo_id, user):
-        """Prepara todos os dados necessários para a tela de edição de horários."""
+        # ... (código existente sem alterações)
         horario_matrix = HorarioService.construir_matriz_horario(pelotao, semana_id, user)
         semana = db.session.get(Semana, semana_id)
         is_admin = user.role in ['super_admin', 'programador', 'admin_escola']
         
-        # Função interna para calcular as horas já agendadas de uma disciplina
         def get_horas_agendadas(disciplina_id, pelotao_nome):
             total_agendado = db.session.scalar(
                 select(func.sum(Horario.duracao)).where(
@@ -170,10 +195,10 @@ class HorarioService:
         return {
             'disciplina_id': aula.disciplina_id,
             'instrutor_id': aula.instrutor_id,
-            'duracao': aula.duracao
+            'duracao': aula.duracao,
+            'observacao': aula.observacao # --- CAMPO NOVO ADICIONADO ---
         }
 
-    # --- FUNÇÃO MODIFICADA PARA VALIDAR CARGA HORÁRIA ---
     @staticmethod
     def save_aula(data, user):
         """Salva uma nova aula ou atualiza uma existente."""
@@ -185,9 +210,9 @@ class HorarioService:
             periodo = int(data['periodo'])
             disciplina_id = int(data['disciplina_id'])
             duracao = int(data.get('duracao', 1))
+            observacao = data.get('observacao', '').strip() or None # --- CAMPO NOVO ADICIONADO ---
             is_admin = user.role in ['super_admin', 'programador', 'admin_escola']
             
-            # Validação da carga horária
             disciplina = db.session.get(Disciplina, disciplina_id)
             if not disciplina:
                 return False, 'Disciplina não encontrada.', 404
@@ -196,7 +221,7 @@ class HorarioService:
                 select(func.sum(Horario.duracao)).where(
                     Horario.disciplina_id == disciplina_id,
                     Horario.pelotao == pelotao,
-                    Horario.id != horario_id # Exclui a própria aula se estiver a ser editada
+                    Horario.id != horario_id
                 )
             ) or 0
             
@@ -231,8 +256,9 @@ class HorarioService:
             aula = Horario(status='confirmado' if is_admin else 'pendente')
             db.session.add(aula)
         
-        aula.pelotao, aula.semana_id, aula.dia_semana, aula.periodo, aula.disciplina_id, aula.duracao, aula.instrutor_id = \
-            pelotao, semana_id, dia, periodo, disciplina_id, duracao, instrutor_id
+        # --- ATUALIZAÇÃO PARA INCLUIR OBSERVAÇÃO ---
+        aula.pelotao, aula.semana_id, aula.dia_semana, aula.periodo, aula.disciplina_id, aula.duracao, aula.instrutor_id, aula.observacao = \
+            pelotao, semana_id, dia, periodo, disciplina_id, duracao, instrutor_id, observacao
 
         try:
             db.session.commit()
@@ -244,7 +270,7 @@ class HorarioService:
             
     @staticmethod
     def remove_aula(horario_id, user):
-        """Remove uma aula do banco de dados."""
+        # ... (código existente sem alterações)
         aula = db.session.get(Horario, int(horario_id))
         if not aula: return False, 'Aula não encontrada.'
         if not HorarioService.can_edit_horario(aula, user): return False, 'Sem permissão para remover esta aula.'
@@ -255,7 +281,7 @@ class HorarioService:
 
     @staticmethod
     def get_aulas_pendentes():
-        """Retorna uma lista de todas as aulas com status 'pendente'."""
+        # ... (código existente sem alterações)
         return db.session.scalars(
             select(Horario).options(
                 joinedload(Horario.disciplina),
@@ -266,7 +292,7 @@ class HorarioService:
         
     @staticmethod
     def aprovar_horario(horario_id, action):
-        """Aprova ou nega uma solicitação de aula."""
+        # ... (código existente sem alterações)
         aula = db.session.get(Horario, int(horario_id))
         if not aula: return False, 'Aula não encontrada.'
 

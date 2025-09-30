@@ -11,7 +11,7 @@ from wtforms.validators import DataRequired, Optional
 from ..models.database import db
 from ..services.aluno_service import AlunoService
 from ..models.user import User
-from ..models.aluno import Aluno # Importar o modelo Aluno
+from ..models.aluno import Aluno
 from ..models.turma import Turma
 from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required, can_view_management_pages_required
 
@@ -75,31 +75,7 @@ class EditAlunoForm(FlaskForm):
     ], validators=[Optional()])
     submit = SubmitField('Atualizar Perfil')
 
-# --- FUNÇÃO CORRIGIDA ---
-@aluno_bp.route('/completar-cadastro', methods=['GET', 'POST'])
-@login_required
-def completar_cadastro():
-    # Se o perfil já existe, apenas redireciona
-    if current_user.aluno_profile:
-        return redirect(url_for('main.dashboard'))
-
-    # Para utilizadores antigos que não têm perfil, cria um perfil básico e redireciona
-    try:
-        new_aluno_profile = Aluno(
-            user_id=current_user.id,
-            opm="A Ser Confirmado" # Valor provisório
-        )
-        db.session.add(new_aluno_profile)
-        db.session.commit()
-        flash("Seu perfil de aluno foi inicializado. Por favor, confirme seus dados.", "info")
-        # Redireciona para o dashboard, pois o perfil já foi criado
-        return redirect(url_for('main.dashboard'))
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Ocorreu um erro ao inicializar seu perfil: {e}", "danger")
-        return redirect(url_for('auth.logout'))
-# --- FIM DA CORREÇÃO ---
-
+# --- ROTA 'completar_cadastro' REMOVIDA DAQUI ---
 
 @aluno_bp.route('/listar')
 @login_required
@@ -117,7 +93,6 @@ def listar_alunos():
     turmas = db.session.scalars(select(Turma).where(Turma.school_id==school_id).order_by(Turma.nome)).all()
     return render_template('listar_alunos.html', alunos=alunos, turmas=turmas, turma_filtrada=turma_filtrada, delete_form=delete_form)
 
-# --- FUNÇÃO CORRIGIDA PARA RESOLVER O ERRO 500 ---
 @aluno_bp.route('/editar/<int:aluno_id>', methods=['GET', 'POST'])
 @login_required
 @school_admin_or_programmer_required
@@ -137,7 +112,6 @@ def editar_aluno(aluno_id):
     form.turma_id.choices = [(t.id, t.nome) for t in turmas]
 
     if request.method == 'GET':
-        # Carrega os dados do utilizador associado para o formulário
         if aluno.user:
             form.nome_completo.data = aluno.user.nome_completo
             form.matricula.data = aluno.user.matricula
@@ -157,7 +131,6 @@ def editar_aluno(aluno_id):
             flash(message, 'error')
 
     return render_template('editar_aluno.html', aluno=aluno, form=form, turmas=turmas, self_edit=False)
-# --- FIM DA CORREÇÃO ---
 
 
 @aluno_bp.route('/excluir/<int:aluno_id>', methods=['POST'])

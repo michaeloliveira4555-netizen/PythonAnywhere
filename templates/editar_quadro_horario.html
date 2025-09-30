@@ -26,19 +26,21 @@
         <tbody>
             {% set tempos = [
                 ("1º", "07:30-08:15"), ("2º", "08:15-09:00"), ("3º", "09:00-09:45"),
-                ("4º", "10:05-10:50"), ("5º", "10:50-11:35"), ("6º", "11:35-12:20"),
-                ("7º", "13:30-14:15"), ("8º", "14:15-15:00"), ("9º", "15:00-15:45"),
-                ("10º", "16:05-16:50"), ("11º", "17:00-17:45"), ("12º", "17:45-18:30"), ("13º", "18:30-19:15"),
-                ("14º", "19:15-20:00"), ("15º", "20:00-20:45")
+                ("4º", "10:00-10:45"), ("5º", "10:45-11:30"), ("6º", "11:30-12:15"),
+                ("7º", "13:45-14:30"), ("8º", "14:30-15:15"), ("9º", "15:15-16:00"),
+                ("10º", "16:15-17:00"), ("11º", "17:00-17:45"), ("12º", "17:45-18:30"),
+                ("13º", "18:30-19:15"), ("14º", "19:15-20:00"), ("15º", "20:00-20:45")
             ] %}
             {% set dias = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo'] %}
 
             {% for row_idx in range(15) %}
+                {% set periodo_num = row_idx + 1 %}
+
                 {% if (current_user.role in ['admin', 'programador']) or
-                      (row_idx < 12) or
-                      (row_idx == 12 and semana_selecionada.mostrar_periodo_13) or
-                      (row_idx == 13 and semana_selecionada.mostrar_periodo_14) or
-                      (row_idx == 14 and semana_selecionada.mostrar_periodo_15) %}
+                      (periodo_num <= 12) or
+                      (periodo_num == 13 and semana_selecionada.mostrar_periodo_13) or
+                      (periodo_num == 14 and semana_selecionada.mostrar_periodo_14) or
+                      (periodo_num == 15 and semana_selecionada.mostrar_periodo_15) %}
                 <tr>
                     <td class="cell-tempo"><strong>{{ tempos[row_idx][0] }}</strong><span>{{ tempos[row_idx][1] }}</span></td>
                     {% for col_idx in range(5) %}
@@ -48,6 +50,21 @@
                         {% include 'partials/_horario_slot_edit.html' %}
                     {% endfor %}
                 </tr>
+
+                {% if periodo_num == 3 %}
+                <tr class="intervalo-row">
+                    <td class="cell-tempo"><strong>INTERVALO</strong><span>09:45-10:00</span></td>
+                    <td colspan="5">INTERVALO</td>
+                </tr>
+                {% endif %}
+
+                {% if periodo_num == 9 %}
+                <tr class="intervalo-row">
+                    <td class="cell-tempo"><strong>INTERVALO</strong><span>16:00-16:15</span></td>
+                    <td colspan="5">INTERVALO</td>
+                </tr>
+                {% endif %}
+
                 {% endif %}
             {% endfor %}
         </tbody>
@@ -77,6 +94,14 @@
     background-color: #f1f5f9;
     cursor: not-allowed;
 }
+.intervalo-row td {
+    background-color: #fffbeb;
+    color: #b45309;
+    font-weight: bold;
+    text-align: center;
+    border-left: none;
+    border-right: none;
+}
 </style>
 
 <div class="modal-overlay" id="horario-modal-overlay">
@@ -89,7 +114,6 @@
 
             <div class="form-group">
                 <label for="modal-disciplina">Disciplina</label>
-                {# --- SELECT MODIFICADO PARA MOSTRAR HORAS RESTANTES --- #}
                 <select id="modal-disciplina" name="disciplina_id" class="form-control" required>
                     <option value="">Selecione a disciplina</option>
                     {% for d in disciplinas_disponiveis %}
@@ -112,6 +136,11 @@
             <div class="form-group">
                 <label for="modal-duracao">Duração (períodos)</label>
                 <input type="number" id="modal-duracao" name="duracao" class="form-control" value="1" min="1" max="12">
+            </div>
+
+            <div class="form-group">
+                <label for="modal-observacao">Observação (opcional)</label>
+                <textarea id="modal-observacao" name="observacao" class="form-control" rows="2" placeholder="Ex: Prova prática, aula externa..."></textarea>
             </div>
 
             <div class="form-actions">
@@ -181,6 +210,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalDisciplinaSelect = document.getElementById('modal-disciplina');
     const modalInstrutorSelect = document.getElementById('modal-instrutor');
     const modalDuracaoInput = document.getElementById('modal-duracao');
+    const modalObservacaoInput = document.getElementById('modal-observacao');
     const modalHorarioIdInput = document.getElementById('modal-horario-id');
     const modalDiaInput = document.getElementById('modal-dia');
     const modalPeriodoInput = document.getElementById('modal-periodo');
@@ -218,6 +248,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         modalInstrutorSelect.value = data.instrutor_id;
                     }
                     modalDuracaoInput.value = data.duracao;
+                    modalObservacaoInput.value = data.observacao || '';
                 } else {
                     alert('Erro ao carregar dados da aula: ' + data.message);
                 }
@@ -286,7 +317,8 @@ document.addEventListener('DOMContentLoaded', function() {
             dia: modalDiaInput.value,
             periodo: modalPeriodoInput.value,
             disciplina_id: modalDisciplinaSelect.value,
-            duracao: modalDuracaoInput.value
+            duracao: modalDuracaoInput.value,
+            observacao: modalObservacaoInput.value
         };
         if (IS_ADMIN && modalInstrutorSelect) {
             payload.instrutor_id = modalInstrutorSelect.value;

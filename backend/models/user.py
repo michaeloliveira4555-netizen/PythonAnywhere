@@ -16,13 +16,16 @@ class User(UserMixin, db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
-    # ALTERADO: id_func -> matricula
     matricula = db.Column(db.String(20), unique=True, nullable=False)
     username = db.Column(db.String(80), unique=True, nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=True)
     password_hash = db.Column(db.String(256), nullable=True)
     nome_completo = db.Column(db.String(120), nullable=True)
     nome_de_guerra = db.Column(db.String(50), nullable=True)
+    
+    # --- CAMPO ADICIONADO AQUI ---
+    posto_graduacao = db.Column(db.String(50), nullable=True)
+
     role = db.Column(db.String(20), nullable=False, default='aluno')
     is_active = db.Column(db.Boolean, default=False, nullable=False)
     must_change_password = db.Column(db.Boolean, default=False, nullable=False)

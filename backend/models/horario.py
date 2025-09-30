@@ -18,6 +18,9 @@ class Horario(db.Model):
     periodo: Mapped[int] = mapped_column(nullable=False)
     duracao: Mapped[int] = mapped_column(default=1)
 
+    # --- CAMPO NOVO ADICIONADO ---
+    observacao: Mapped[t.Optional[str]] = mapped_column(db.Text, nullable=True)
+
     # Chave estrangeira para a semana
     semana_id: Mapped[int] = mapped_column(db.ForeignKey('semanas.id'), nullable=False)
 

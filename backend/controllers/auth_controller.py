@@ -11,7 +11,6 @@ from ..models.user import User
 from ..models.user_school import UserSchool
 from ..models.instrutor import Instrutor
 from ..models.aluno import Aluno
-# --- NOVAS IMPORTAÇÕES NECESSÁRIAS ---
 from ..models.disciplina import Disciplina
 from ..models.historico_disciplina import HistoricoDisciplina
 from utils.validators import validate_email, validate_password_strength
@@ -36,9 +35,15 @@ def register():
         password2 = request.form.get('password2')
         role = request.form.get('role')
         opm = request.form.get('opm')
+        # --- NOVO CAMPO ---
+        posto_graduacao = request.form.get('posto_graduacao')
 
         if not role:
             flash('Por favor, selecione sua função (Aluno ou Instrutor).', 'danger')
+            return render_template('register.html', form_data=request.form)
+            
+        if not posto_graduacao:
+            flash('O campo Posto/Graduação é obrigatório.', 'danger')
             return render_template('register.html', form_data=request.form)
 
         if role == 'aluno' and not opm:
@@ -77,32 +82,27 @@ def register():
 
         user.nome_completo = nome_completo
         user.nome_de_guerra = nome_de_guerra
+        user.posto_graduacao = posto_graduacao
         user.email = email
         user.username = matricula
         user.set_password(password)
         user.is_active = True
         
-        # --- LÓGICA DE CRIAÇÃO DE PERFIL E MATRÍCULA AUTOMÁTICA ---
         if role == 'instrutor' and not user.instrutor_profile:
             new_instrutor_profile = Instrutor(user_id=user.id)
             db.session.add(new_instrutor_profile)
         elif role == 'aluno' and not user.aluno_profile:
-            # 1. Cria o perfil do aluno
             new_aluno_profile = Aluno(user_id=user.id, opm=opm)
             db.session.add(new_aluno_profile)
-            db.session.flush() # Garante que o perfil do aluno tenha um ID
+            db.session.flush()
 
-            # 2. Encontra a escola do aluno
             user_school_link = db.session.scalar(select(UserSchool).where(UserSchool.user_id == user.id))
             if user_school_link:
                 school_id = user_school_link.school_id
-                # 3. Encontra todas as disciplinas dessa escola
                 disciplinas_da_escola = db.session.scalars(select(Disciplina).where(Disciplina.school_id == school_id)).all()
-                # 4. Matricula o aluno em cada disciplina
                 for disciplina in disciplinas_da_escola:
                     nova_matricula = HistoricoDisciplina(aluno_id=new_aluno_profile.id, disciplina_id=disciplina.id)
                     db.session.add(nova_matricula)
-        # --- FIM DA CORREÇÃO ---
         
         db.session.commit()
 
@@ -126,18 +126,7 @@ def login():
 
         if user and user.is_active and user.check_password(password):
             login_user(user)
-
-            if user.role == 'super_admin':
-                return redirect(url_for('super_admin.dashboard'))
-            
-            if user.role == 'aluno' and not user.aluno_profile:
-                flash('Por favor, complete seu perfil de aluno para continuar.', 'info')
-                return redirect(url_for('aluno.completar_cadastro'))
-
-            elif user.role == 'instrutor' and not user.instrutor_profile:
-                flash('Por favor, complete seu perfil de instrutor para continuar.', 'info')
-                return redirect(url_for('instrutor.completar_cadastro'))
-
+            # --- REMOÇÃO DO REDIRECIONAMENTO PARA COMPLETAR CADASTRO ---
             return redirect(url_for('main.dashboard'))
         elif user and not user.is_active:
             flash('Sua conta precisa ser ativada. Use a página de registro para ativá-la.', 'warning')

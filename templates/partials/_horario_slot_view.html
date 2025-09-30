@@ -8,6 +8,11 @@
             {% if aula.instrutor %}
             <div class="instrutor-name">{{ aula.instrutor }}</div>
             {% endif %}
+
+            {# --- OBSERVAÇÃO EXIBIDA AQUI --- #}
+            {% if aula.observacao %}
+            <div class="slot-observacao">{{ aula.observacao }}</div>
+            {% endif %}
         </div>
     </td>
 {% endif %}

@@ -19,18 +19,14 @@
                 <thead>
                     <tr>
                         <th>Nome Completo</th>
-                        {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
-                        <th>Id Func.</th>
-                        {% endif %}
+                        <th>Matrícula</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for aluno in turma.alunos | sort(attribute='user.nome_completo') %}
                     <tr>
                         <td>{{ aluno.user.nome_completo or aluno.user.username }}</td>
-                        {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
-                        <td>{{ aluno.user.id_func }}</td>
-                        {% endif %}
+                        <td>{{ aluno.user.matricula }}</td>
                     </tr>
                     {% else %}
                     <tr>
@@ -42,7 +38,9 @@
         </div>
     </div>
 
-    {% if current_user.role in ['programador', 'admin_escola'] %}
+    {# --- CORREÇÃO APLICADA AQUI --- #}
+    {# Agora permite que 'aluno' e 'instrutor' também vejam os cargos #}
+    {% if current_user.role in ['programador', 'admin_escola', 'aluno', 'instrutor'] %}
     <div class="details-section">
         <div class="section-header">
             <h3>Cargos da Turma</h3>
@@ -53,7 +51,7 @@
                 {% for cargo in cargos_lista %}
                 <div class="form-group">
                     <label for="cargo_{{ cargo }}">{{ cargo }}</label>
-                    <select id="cargo_{{ cargo }}" name="cargo_{{ cargo }}" class="form-control">
+                    <select id="cargo_{{ cargo }}" name="cargo_{{ cargo }}" class="form-control" {% if current_user.role in ['aluno', 'instrutor'] %}disabled{% endif %}>
                         <option value="">-- Nenhum --</option>
                         {% for aluno in turma.alunos | sort(attribute='user.nome_completo') %}
                             <option value="{{ aluno.id }}" {% if cargos_atuais[cargo] == aluno.id %}selected{% endif %}>
@@ -66,7 +64,10 @@
             </div>
             <div class="form-actions">
                 <a href="{{ url_for('turma.listar_turmas') }}" class="btn btn-secondary">Voltar</a>
-                {{ form.submit(class="btn btn-primary") }}
+                {# O botão de salvar só aparece para admins #}
+                {% if current_user.role in ['programador', 'admin_escola'] %}
+                    {{ form.submit(class="btn btn-primary") }}
+                {% endif %}
             </div>
         </form>
     </div>
