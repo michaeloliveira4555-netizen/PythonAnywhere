@@ -1,148 +1,217 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Sistema EsFAS{% endblock %}
+{% block title %}Painel - Sistema EsFAS{% endblock %}
 
 {% block content %}
-<div class="container-fluid dashboard-container">
+<div class="dashboard-container">
+
+    {% set can_manage = current_user.role in ['programador', 'admin_escola'] %}
+    {% set is_super_admin = current_user.role == 'super_admin' %}
+    {% if is_super_admin %}
+    <div class="alert alert-info" role="alert">Super Administradores possuem acesso somente leitura fora do painel dedicado. Utilize o painel do Super Admin para efetuar mudanças.</div>
+    {% endif %}
+
+
 
     {% if current_user.role == 'super_admin' and session.get('view_as_school_id') %}
-    <div class="alert alert-warning d-flex justify-content-between align-items-center mt-3" role="alert">
+    <div class="alert alert-warning d-flex justify-content-between align-items-center" role="alert">
         <div>
-            <strong>Modo de Visualização:</strong> Você está vendo o painel como um administrador da escola <strong>{{ session.get('view_as_school_name') }}</strong>.
+            <strong>Modo de visualização:</strong>
+            Você está visualizando o painel como a escola <strong>{{ session.get('view_as_school_name') }}</strong>.
         </div>
-        <a href="{{ url_for('super_admin.exit_view') }}" class="btn btn-sm btn-outline-dark">Sair da Visualização</a>
+        <a href="{{ url_for('super_admin.exit_view') }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-x-circle"></i> Sair da visualização
+        </a>
     </div>
     {% endif %}
 
-    <div class="dashboard-header">
-        <div class="welcome-section">
-            <div class="welcome-text">
-                <h1>Olá, <span class="user-highlight">{{ current_user.nome_de_guerra or current_user.nome_completo }}</span>!</h1>
-                {% if school_in_context %}
-                    <p class="welcome-subtitle">Você está no painel da <strong>{{ school_in_context.nome }}</strong>.</p>
-                {% else %}
-                    <p class="welcome-subtitle">Bem-vindo de volta à visão geral do SiGA EsFAS.</p>
-                {% endif %}
-            </div>
+    <section class="dashboard-header">
+        <div class="welcome-text">
+            <h1>Olá, <span class="user-highlight">{{ current_user.nome_de_guerra or current_user.nome_completo }}</span>!</h1>
+            {% if school_in_context %}
+                <p class="welcome-subtitle">Você está acompanhando os dados da <strong>{{ school_in_context.nome }}</strong>.</p>
+            {% else %}
+                <p class="welcome-subtitle">Bem-vindo(a) de volta à visão geral do Sistema EsFAS.</p>
+            {% endif %}
         </div>
 
-        {# Estatísticas Principais #}
         {% if dashboard_data %}
         <div class="quick-stats-bar">
             <div class="stat-compact">
-                <span class="stat-icon">👥</span>
+                <div class="stat-icon"><i class="bi bi-people-fill"></i></div>
                 <div class="stat-info">
                     <span class="stat-number">{{ dashboard_data.total_alunos }}</span>
-                    <span class="stat-label">Alunos</span>
+                    <span class="stat-label">Alunos ativos</span>
                 </div>
             </div>
             <div class="stat-compact">
-                <span class="stat-icon">🎓</span>
+                <div class="stat-icon"><i class="bi bi-person-video3"></i></div>
                 <div class="stat-info">
                     <span class="stat-number">{{ dashboard_data.total_instrutores }}</span>
                     <span class="stat-label">Instrutores</span>
                 </div>
             </div>
             <div class="stat-compact">
-                <span class="stat-icon">📚</span>
+                <div class="stat-icon"><i class="bi bi-journal-bookmark"></i></div>
                 <div class="stat-info">
                     <span class="stat-number">{{ dashboard_data.total_disciplinas }}</span>
                     <span class="stat-label">Disciplinas</span>
                 </div>
             </div>
-            
-            {% if school_in_context and current_user.role in ['super_admin', 'programador', 'admin_escola'] and dashboard_data.aulas_pendentes > 0 %}
-            <a href="{{ url_for('horario.aprovar_horarios') }}" class="stat-compact stat-warning">
-                <span class="stat-icon">⚠️</span>
-                <div class="stat-info">
-                    <span class="stat-number">{{ dashboard_data.aulas_pendentes }}</span>
-                    <span class="stat-label">Aulas Pendentes</span>
-                </div>
-            </a>
+
+            {% if school_in_context and current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
+                <a href="{{ url_for('horario.aprovar_horarios') }}" class="stat-compact stat-warning">
+                    <div class="stat-icon"><i class="bi bi-lightning-charge"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-number">{{ dashboard_data.aulas_pendentes }}</span>
+                        <span class="stat-label">Aulas pendentes</span>
+                    </div>
+                </a>
             {% endif %}
         </div>
         {% endif %}
-    </div>
+    </section>
 
-    {# Grade principal de Módulos e Informações #}
     <div class="dashboard-grid">
-        <div class="modules-grid-main">
-            {# ... Cards de Módulos (Alunos, Instrutores, etc.) ... #}
-        </div>
+        <section class="modules-grid-main">
+            <article class="dashboard-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h3 class="h5 mb-1">Gestão de alunos</h3>
+                            <p class="text-body-secondary small mb-0">Cadastros, matrículas e histórico acadêmico em um só lugar.</p>
+                        </div>
+                        <span class="badge bg-primary-subtle">Alunos</span>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="{{ url_for('aluno.listar_alunos') }}" class="btn btn-primary btn-sm"><i class="bi bi-people"></i> Ver alunos</a>
+                        {% if can_manage %}
+                        <a href="{{ url_for('main.pre_cadastro', role='aluno') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-person-plus"></i> Pré-cadastrar</a>
+                        {% elif is_super_admin %}
+                        <button type="button" class="btn btn-outline-primary btn-sm" disabled title="Disponível apenas para administradores de escola"><i class="bi bi-person-plus"></i> Pré-cadastrar</button>
+                        {% endif %}
+                    </div>
+                </div>
+            </article>
 
-        {# Painel Lateral de Informações #}
-        <div class="dashboard-sidebar">
+            <article class="dashboard-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h3 class="h5 mb-1">Equipe de instrutores</h3>
+                            <p class="text-body-secondary small mb-0">Confira qualificações, turmas e disponibilidade.</p>
+                        </div>
+                        <span class="badge bg-secondary-subtle">Instrutores</span>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="{{ url_for('instrutor.listar_instrutores') }}" class="btn btn-primary btn-sm"><i class="bi bi-person-video3"></i> Ver instrutores</a>
+                        {% if can_manage %}
+                        <a href="{{ url_for('instrutor.cadastrar_instrutor') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-person-plus"></i> Novo instrutor</a>
+                        {% elif is_super_admin %}
+                        <button type="button" class="btn btn-outline-primary btn-sm" disabled title="Disponível apenas para administradores de escola"><i class="bi bi-person-plus"></i> Novo instrutor</button>
+                        {% endif %}
+                    </div>
+                </div>
+            </article>
+
+            <article class="dashboard-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h3 class="h5 mb-1">Disciplinas e horários</h3>
+                            <p class="text-body-secondary small mb-0">Organize carga horária, cronogramas e aprovações.</p>
+                        </div>
+                        <span class="badge bg-primary-subtle">Disciplinas</span>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="{{ url_for('disciplina.listar_disciplinas') }}" class="btn btn-primary btn-sm"><i class="bi bi-journal-bookmark"></i> Ver disciplinas</a>
+                        <a href="{{ url_for('horario.index') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-calendar-week"></i> Quadros de horário</a>
+                    </div>
+                </div>
+            </article>
+
+            <article class="dashboard-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h3 class="h5 mb-1">Turmas e vínculos</h3>
+                            <p class="text-body-secondary small mb-0">Gerencie composição de turmas, cargos e vínculos escolares.</p>
+                        </div>
+                        <span class="badge bg-secondary-subtle">Turmas</span>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="{{ url_for('turma.listar_turmas') }}" class="btn btn-primary btn-sm"><i class="bi bi-mortarboard"></i> Ver turmas</a>
+                        <a href="{{ url_for('vinculo.gerenciar_vinculos') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-link"></i> Gerenciar vínculos</a>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <aside class="dashboard-sidebar">
             <div class="info-panel">
-                <div class="panel-header">
-                    <h4>Próximas Aulas Agendadas</h4>
+                <div class="panel-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Próximas aulas</h4>
+                    <span class="badge bg-primary-subtle">
+                        <i class="bi bi-clock-history"></i>
+                    </span>
                 </div>
                 <div class="panel-body">
-                    {% if dashboard_data.proximas_aulas %}
+                    {% if dashboard_data and dashboard_data.proximas_aulas %}
                         <ul class="info-list">
                         {% for aula in dashboard_data.proximas_aulas %}
                             <li>
-                                <div class="info-icon class-date">{{ aula.semana.data_inicio.strftime('%d/%m') }}</div>
+                                <div class="info-icon">{{ aula.semana.data_inicio.strftime('%d/%m') }}</div>
                                 <div class="info-details">
                                     <strong>{{ aula.disciplina.materia }}</strong>
-                                    <span>{{ aula.pelotao }} - {{ aula.instrutor.user.nome_de_guerra }}</span>
+                                    <span class="text-body-secondary small">{{ aula.pelotao }} • {{ aula.instrutor.user.nome_de_guerra }}</span>
                                 </div>
                             </li>
                         {% endfor %}
                         </ul>
                     {% else %}
-                        <p class="text-muted text-center">Nenhuma aula agendada.</p>
+                        <p class="text-body-secondary text-center mb-0">Nenhuma aula agendada para os próximos dias.</p>
                     {% endif %}
                 </div>
             </div>
 
-            {# --- CORREÇÃO APLICADA AQUI --- #}
-            {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
+            {% if dashboard_data and current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
             <div class="info-panel">
-                <div class="panel-header">
-                    <h4>Atividade Recente</h4>
+                <div class="panel-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Atividade recente</h4>
+                    <span class="badge bg-secondary-subtle">
+                        <i class="bi bi-activity"></i>
+                    </span>
                 </div>
                 <div class="panel-body">
                     {% if dashboard_data.usuarios_recentes %}
                         <ul class="info-list">
                         {% for usuario in dashboard_data.usuarios_recentes %}
                             <li>
-                                <div class="info-icon user-role-icon {{ usuario.role }}">
-                                    {% if usuario.role == 'aluno' %}👥{% else %}🎓{% endif %}
+                                <div class="info-icon">
+                                    {% if usuario.role == 'aluno' %}
+                                        <i class="bi bi-person-badge"></i>
+                                    {% elif usuario.role == 'instrutor' %}
+                                        <i class="bi bi-person-video3"></i>
+                                    {% else %}
+                                        <i class="bi bi-people"></i>
+                                    {% endif %}
                                 </div>
                                 <div class="info-details">
                                     <strong>{{ usuario.nome_completo or usuario.username }}</strong>
-                                    <span>Novo {{ usuario.role|replace('_', ' ')|title }} cadastrado</span>
+                                    <span class="text-body-secondary small">Novo {{ usuario.role|replace('_', ' ')|title }} cadastrado</span>
                                 </div>
                             </li>
                         {% endfor %}
                         </ul>
                     {% else %}
-                        <p class="text-muted text-center">Nenhuma atividade recente.</p>
+                        <p class="text-body-secondary text-center mb-0">Nenhuma movimentação recente.</p>
                     {% endif %}
                 </div>
             </div>
             {% endif %}
-            {# --- FIM DA CORREÇÃO --- #}
-        </div>
+        </aside>
     </div>
 </div>
-
-{# Estilos para os novos componentes do Dashboard #}
-<style>
-    .stat-compact.stat-warning { background-color: #fffbeb; border: 1px solid #fde68a; text-decoration: none; color: inherit; transition: all 0.2s ease; }
-    .stat-compact.stat-warning:hover { background-color: #fefce8; transform: translateY(-2px); box-shadow: var(--shadow-medium); }
-    .stat-warning .stat-icon { color: #f59e0b; }
-    .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-top: 1.5rem; }
-    .modules-grid-main { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
-    .dashboard-sidebar { display: flex; flex-direction: column; gap: 1.5rem; }
-    .info-panel { background: var(--color-white); border-radius: var(--border-radius); border: 1px solid var(--color-border); box-shadow: var(--shadow-soft); }
-    .panel-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--color-border); }
-    .panel-header h4 { margin: 0; font-size: 1.1rem; font-weight: 700; }
-    .panel-body { padding: 1.5rem; }
-    .info-list { list-style: none; padding: 0; margin: 0; }
-    .info-list li { display: flex; align-items: center; gap: 1rem; padding-bottom: 1rem; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; }
-    .info-list li:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-    .info-icon { flex-shrink: 0; width: 50px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-</style>
-
 {% endblock %}
+
+

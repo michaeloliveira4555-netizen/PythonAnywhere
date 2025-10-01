@@ -1,7 +1,7 @@
 # utils/decorators.py
 
 from functools import wraps
-from flask import flash, redirect, url_for
+from flask import flash, redirect, url_for, request
 from flask_login import current_user
 
 def programmer_required(f):
@@ -74,6 +74,9 @@ def admin_or_programmer_required(f):
         if not current_user.is_authenticated:
             return redirect(url_for('auth.login'))
         user_role = getattr(current_user, 'role', None)
+        if user_role == 'super_admin' and request.method != 'GET':
+            flash('Super Administradores possuem acesso somente leitura fora do painel do Super Admin.', 'warning')
+            return redirect(request.referrer or url_for('super_admin.dashboard'))
         if user_role not in ['super_admin', 'programador', 'admin_escola']:
             flash('Você não tem permissão para acessar esta página.', 'danger')
             return redirect(url_for('main.dashboard'))
@@ -102,3 +105,4 @@ def aluno_profile_required(f):
                 return redirect(url_for('aluno.completar_cadastro'))
         return f(*args, **kwargs)
     return decorated_function
+

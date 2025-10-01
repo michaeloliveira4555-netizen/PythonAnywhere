@@ -27,11 +27,54 @@ class TestAuthController:
 
 class TestPermissionSystem:
     """Testes para o sistema de permissões."""
-    # ... (os testes de permissão que já passam) ...
-    def test_school_admin_cannot_access_super_admin_dashboard(self, test_client, test_app):
-        pass # Placeholder for existing test
-    def test_super_admin_view_as_school_context(self, test_client, test_app):
-        pass # Placeholder for existing test
+
+    def test_super_admin_pre_cadastro_is_read_only(self, test_client, test_app):
+        with test_app.app_context():
+            super_admin = User(matricula='super_sa', username='super_sa', email='super@admin.com', role='super_admin', is_active=True)
+            super_admin.set_password('superpass')
+            escola = School(nome='Escola Central')
+            db.session.add_all([super_admin, escola])
+            db.session.commit()
+            escola_id = escola.id
+        with test_client as client:
+            client.post('/login', data={'username': 'super_sa', 'password': 'superpass'}, follow_redirects=True)
+            response_get = client.get('/pre-cadastro')
+            assert response_get.status_code == 200
+            response_post = client.post('/pre-cadastro', data={'matriculas': '99999', 'school_id': str(escola_id), 'role': 'aluno'}, follow_redirects=True)
+            assert response_post.status_code == 200
+            assert 'somente leitura' in response_post.get_data(as_text=True)
+        with test_app.app_context():
+            assert db.session.scalar(select(User).filter_by(matricula='99999')) is None
+
+    def test_super_admin_cannot_approve_horario(self, test_client, test_app):
+        with test_app.app_context():
+            super_admin = User(matricula='super_sa_sched', username='super_sa_sched', email='dash@admin.com', role='super_admin', is_active=True)
+            super_admin.set_password('superpass')
+            escola = School(nome='Escola Agenda')
+            ciclo = Ciclo(nome='Ciclo Agenda')
+            db.session.add_all([super_admin, escola, ciclo])
+            db.session.commit()
+            semana = Semana(nome='Semana Agenda', data_inicio=date.today(), data_fim=date.today() + timedelta(days=6), ciclo_id=ciclo.id)
+            instrutor_user = User(matricula='instr_sched', username='instr_sched', role='instrutor', is_active=True)
+            instrutor_user.set_password('instrpass')
+            disciplina = Disciplina(materia='Disciplina Agenda', carga_horaria_prevista=10, school_id=escola.id, ciclo_id=ciclo.id)
+            db.session.add_all([semana, instrutor_user, disciplina])
+            db.session.commit()
+            instrutor = Instrutor(user_id=instrutor_user.id, telefone=None, is_rr=False)
+            db.session.add(instrutor)
+            db.session.commit()
+            horario = Horario(pelotao='Pel Agenda', dia_semana='segunda', periodo=1, duracao=1, semana_id=semana.id, disciplina_id=disciplina.id, instrutor_id=instrutor.id, status='pendente')
+            db.session.add(horario)
+            db.session.commit()
+            horario_id = horario.id
+        with test_client as client:
+            client.post('/login', data={'username': 'super_sa_sched', 'password': 'superpass'}, follow_redirects=True)
+            response_post = client.post('/horario/aprovar', data={'horario_id': horario_id, 'action': 'aprovar'}, follow_redirects=True)
+            assert response_post.status_code == 200
+            assert 'somente leitura' in response_post.get_data(as_text=True)
+        with test_app.app_context():
+            horario_atualizado = db.session.get(Horario, horario_id)
+            assert horario_atualizado.status == 'pendente'
 
 class TestWorkflow:
     """

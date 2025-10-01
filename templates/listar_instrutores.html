@@ -5,14 +5,19 @@
 {% block content %}
 <div class="content-header">
     <h1>Lista de Instrutores</h1>
-    <p>Consulte e gerencie os instrutores cadastrados na escola.</p>
+    <p>Consulte os instrutores cadastrados e acompanhe seus dados.</p>
 </div>
+
+{% set can_manage = current_user.role in ['programador', 'admin_escola'] %}
+{% set is_super_admin = current_user.role == 'super_admin' %}
+{% if is_super_admin %}
+<div class="alert alert-info" role="alert">Super Administradores possuem acesso somente leitura fora do painel do Super Admin.</div>
+{% endif %}
 
 <div class="table-container">
     <div class="table-header">
         <h3>Instrutores Cadastrados</h3>
-        
-        {% if current_user.role in ['programador', 'admin_escola'] %}
+        {% if can_manage %}
         <div class="header-actions">
             <a href="{{ url_for('main.pre_cadastro', role='instrutor') }}" class="btn btn-info">
                 <span>+</span> Inserir Pré-Cadastro
@@ -20,6 +25,11 @@
             <a href="{{ url_for('instrutor.cadastrar_instrutor') }}" class="btn btn-primary">
                 <span>+</span> Cadastrar Novo Instrutor
             </a>
+        </div>
+        {% elif is_super_admin %}
+        <div class="header-actions">
+            <button type="button" class="btn btn-info" disabled><span>+</span> Inserir Pré-Cadastro</button>
+            <button type="button" class="btn btn-primary" disabled><span>+</span> Cadastrar Novo Instrutor</button>
         </div>
         {% endif %}
     </div>
@@ -34,9 +44,7 @@
                         <th>Matrícula</th>
                         <th>Nome de Guerra</th>
                         <th>E-mail</th>
-                        {% if current_user.role in ['programador', 'admin_escola'] %}
                         <th class="text-right">Ações</th>
-                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -46,27 +54,31 @@
                         <td data-label="Nome Completo">{{ instrutor.user.nome_completo if instrutor.user else 'N/A' }}</td>
                         <td data-label="Matrícula">{{ instrutor.user.matricula if instrutor.user else 'N/A' }}</td>
                         <td data-label="Nome de Guerra">{{ instrutor.user.nome_de_guerra if instrutor.user else 'N/A' }}</td>
-                        <td data-label="Email">{{ instrutor.user.email if instrutor.user else 'N/A' }}</td>
-                        {% if current_user.role in ['programador', 'admin_escola'] %}
+                        <td data-label="E-mail">{{ instrutor.user.email if instrutor.user else 'N/A' }}</td>
                         <td data-label="Ações" class="text-right">
                             <div class="btn-group">
+                                {% if can_manage %}
                                 <a href="{{ url_for('instrutor.editar_instrutor', instrutor_id=instrutor.id) }}" class="btn btn-sm btn-warning">Editar</a>
                                 <form method="POST" action="{{ url_for('instrutor.excluir_instrutor', instrutor_id=instrutor.id) }}" onsubmit="return confirm('Tem certeza que deseja excluir este instrutor? Esta ação não pode ser desfeita.');" style="display: inline;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
                                 </form>
+                                {% elif is_super_admin %}
+                                <button type="button" class="btn btn-sm btn-outline-secondary" disabled>Somente leitura</button>
+                                {% else %}
+                                <span class="text-body-secondary small">Sem permissões</span>
+                                {% endif %}
                             </div>
                         </td>
-                        {% endif %}
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         {% else %}
             <div class="empty-state">
-                <div class="empty-icon">🎓</div>
+                <div class="empty-icon"><i class="bi bi-person-video3"></i></div>
                 <h2>Nenhum Instrutor Encontrado</h2>
-                <p>Nenhum instrutor cadastrado no sistema. Utilize os botões acima para começar.</p>
+                <p>Nenhum instrutor cadastrado no sistema.</p>
             </div>
         {% endif %}
     </div>

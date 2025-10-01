@@ -1,52 +1,395 @@
 {% extends 'base.html' %}
 
-{% block title %}Super Admin Dashboard{% endblock %}
+{% block title %}Central do Super Administrador{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h1 class="mb-4">Painel do Super Administrador</h1>
-    <p>Bem-vindo ao painel de controle geral do sistema.</p>
-
-    <div class="row">
-        <!-- Card para Visualizar como Admin de Escola -->
-        <div class="col-md-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Visualizar como Administrador de Escola</h5>
+<div class="super-admin-dashboard container-fluid py-4">
+    <section class="super-admin-hero position-relative overflow-hidden rounded-4 mb-4 text-white">
+        <div class="row align-items-center g-4 position-relative">
+            <div class="col-lg-7">
+                <span class="badge text-bg-light text-uppercase fw-semibold letter-spacing mb-3">
+                    <i class="bi bi-shield-lock-fill me-2"></i> Acesso Global
+                </span>
+                <h1 class="display-5 fw-semibold mb-3">Central do Super Administrador</h1>
+                <p class="lead text-white-50 mb-4">
+                    Visualize qualquer escola, acompanhe indicadores críticos e execute ações prioritárias de forma imediata.
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{{ url_for('super_admin.manage_schools') }}" class="btn btn-light btn-lg px-4">
+                        <i class="bi bi-building-add me-2"></i>
+                        Criar nova escola
+                    </a>
+                    <a href="{{ url_for('super_admin.manage_assignments') }}" class="btn btn-outline-light btn-lg px-4">
+                        <i class="bi bi-people-fill me-2"></i>
+                        Gerenciar atribuições
+                    </a>
                 </div>
-                <div class="card-body">
-                    <p class="card-text">Selecione uma escola para visualizar o painel principal como se fosse um administrador daquela unidade.</p>
-                    <div class="mb-3">
-                        <label for="school_select_view" class="form-label">Selecione uma Escola:</label>
-                        <select class="form-select" id="school_select_view" name="school_id_view" onchange="if(this.value) { window.location.href = '{{ url_for('main.dashboard') }}?view_as_school=' + this.value; }">
-                            <option value="">-- Selecione para visualizar --</option>
+            </div>
+            <div class="col-lg-5">
+                <div class="hero-card p-4 p-xl-5 rounded-4 shadow-sm bg-white text-secondary">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="hero-icon rounded-circle me-3">
+                            <i class="bi bi-eye-fill"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">Entrar no contexto de uma escola</h5>
+                            <small class="text-body-secondary">Use este recurso para ver o painel principal como um admin local.</small>
+                        </div>
+                    </div>
+                    <form>
+                        <label class="form-label fw-semibold" for="school_select_view">Escolha a escola</label>
+                        <select class="form-select form-select-lg" id="school_select_view" name="school_id_view"
+                                onchange="if(this.value){ window.location.href='{{ url_for('main.dashboard') }}?view_as_school=' + this.value; }">
+                            <option value="">Selecionar para visualizar</option>
                             {% for school in all_schools %}
-                                <option value="{{ school.id }}">{{ school.nome }}</option>
+                                <option value="{{ school.id }}" {% if session.get('view_as_school_id') == school.id %}selected{% endif %}>{{ school.nome }}</option>
                             {% endfor %}
                         </select>
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <small class="text-body-secondary">Essa ação abre o dashboard principal no contexto escolhido.</small>
+                            <a href="{{ url_for('super_admin.exit_view') }}" class="btn btn-link text-decoration-none px-0">
+                                <i class="bi bi-x-circle me-1"></i> Encerrar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="hero-overlay"></div>
+        <img src="{{ url_for('static', filename='img/fundo.jpg') }}" alt="Paisagem de fundo" class="hero-background" />
+    </section>
+
+    <section class="row g-4 mb-4">
+        <div class="col-xxl-3 col-sm-6">
+            <div class="metric-card h-100 p-4 rounded-4 shadow-sm">
+                <div class="metric-icon bg-primary-subtle text-primary">
+                    <i class="bi bi-buildings"></i>
+                </div>
+                <div>
+                    <span class="metric-value">{{ metrics.total_schools }}</span>
+                    <span class="metric-label">Escolas cadastradas</span>
+                    <small class="text-body-secondary">{{ metrics.active_schools }} ativas neste momento</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xxl-3 col-sm-6">
+            <div class="metric-card h-100 p-4 rounded-4 shadow-sm">
+                <div class="metric-icon bg-success-subtle text-success">
+                    <i class="bi bi-person-badge-fill"></i>
+                </div>
+                <div>
+                    <span class="metric-value">{{ metrics.total_admins }}</span>
+                    <span class="metric-label">Administradores ativos</span>
+                    <small class="text-body-secondary">{{ metrics.user_school_links }} vínculos confirmados</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xxl-3 col-sm-6">
+            <div class="metric-card h-100 p-4 rounded-4 shadow-sm">
+                <div class="metric-icon bg-info-subtle text-info">
+                    <i class="bi bi-people"></i>
+                </div>
+                <div>
+                    <span class="metric-value">{{ metrics.global_users }}</span>
+                    <span class="metric-label">Usuários registrados</span>
+                    <small class="text-body-secondary">Inclui todos os perfis do sistema</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xxl-3 col-sm-6">
+            <div class="metric-card h-100 p-4 rounded-4 shadow-sm">
+                <div class="metric-icon bg-warning-subtle text-warning">
+                    <i class="bi bi-key-fill"></i>
+                </div>
+                <div>
+                    <span class="metric-value">{{ metrics.pending_resets }}</span>
+                    <span class="metric-label">Pedidos de senha pendentes</span>
+                    <small class="text-body-secondary">Monitorados pela central de suporte</small>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="row g-4">
+        <div class="col-xl-7">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white border-0 rounded-top-4 pb-0">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                        <div>
+                            <h4 class="card-title mb-1">Panorama das escolas</h4>
+                            <p class="text-body-secondary small mb-0">Visão geral das unidades cadastradas, status e pontos de atenção.</p>
+                        </div>
+                        <a href="{{ url_for('super_admin.manage_schools') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-gear-wide-connected me-1"></i> Abrir gerenciamento
+                        </a>
                     </div>
                 </div>
+                <div class="card-body">
+                    {% if schools_overview %}
+                        <div class="row g-3">
+                            {% for school in schools_overview %}
+                                <div class="col-md-6">
+                                    <div class="school-card h-100 p-3 p-lg-4 rounded-4 border">
+                                        <div class="d-flex justify-content-between align-items-start mb-3">
+                                            <div>
+                                                <h5 class="mb-1">{{ school.nome }}</h5>
+                                                <small class="text-body-secondary">Criada em {{ school.created_at.strftime('%d/%m/%Y') }}</small>
+                                            </div>
+                                            <span class="badge {% if school.is_active %}bg-success-subtle text-success{% else %}bg-secondary-subtle text-secondary{% endif %}">
+                                                {% if school.is_active %}Ativa{% else %}Inativa{% endif %}
+                                            </span>
+                                        </div>
+                                        <div class="d-flex gap-3 flex-wrap mb-3">
+                                            <div>
+                                                <span class="stat-label">Administradores</span>
+                                                <span class="stat-number">{{ school.admins }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="stat-label">Usuários vinculados</span>
+                                                <span class="stat-number">{{ school.members }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <a href="{{ url_for('main.dashboard') }}?view_as_school={{ school.id }}" class="btn btn-sm btn-primary">
+                                                <i class="bi bi-eyeglasses me-1"></i> Entrar no contexto
+                                            </a>
+                                            <small class="text-body-secondary">{{ school.admins }} admins respondem por esta unidade</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <img src="{{ url_for('static', filename='icons/disciplinas_icon.png') }}" alt="Ilustração" class="empty-state-img mb-3" />
+                            <p class="text-body-secondary">Nenhuma escola cadastrada ainda. Comece criando a primeira unidade.</p>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
-
-        <!-- Card para Gerenciamento -->
-        <div class="col-md-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Gerenciamento do Sistema</h5>
+        <div class="col-xl-5">
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-white border-0 rounded-top-4 pb-0 d-flex justify-content-between align-items-start">
+                    <div>
+                        <h4 class="card-title mb-1">Últimas atribuições</h4>
+                        <p class="text-body-secondary small mb-0">Usuários vinculados recentemente às escolas.</p>
+                    </div>
+                    <a href="{{ url_for('super_admin.manage_assignments') }}" class="btn btn-link text-decoration-none px-0">
+                        Ver tudo
+                    </a>
                 </div>
                 <div class="card-body">
-                    <p class="card-text">Crie novas escolas ou gerencie as atribuições de usuários às escolas existentes.</p>
-                    <a href="{{ url_for('super_admin.manage_schools') }}" class="btn btn-primary">
-                        <i class="fas fa-school me-2"></i>Gerenciar Escolas
-                    </a>
-                    <a href="{{ url_for('super_admin.manage_assignments') }}" class="btn btn-secondary">
-                        <i class="fas fa-user-cog me-2"></i>Gerenciar Atribuições
-                    </a>
+                    {% if recent_assignments %}
+                        <ul class="timeline list-unstyled mb-0">
+                            {% for assignment in recent_assignments %}
+                                <li class="timeline-item">
+                                    <div class="timeline-point bg-primary"></div>
+                                    <div class="timeline-content">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <strong>{{ assignment.user.nome_completo or assignment.user.username or assignment.user.matricula }}</strong>
+                                            <span class="badge bg-primary-subtle text-primary text-capitalize">{{ assignment.role.replace('_', ' ') }}</span>
+                                        </div>
+                                        <div class="small text-body-secondary">{{ assignment.school.nome }} · {{ assignment.created_at.strftime('%d/%m/%Y %H:%M') }}</div>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-body-secondary">Nenhuma atribuição recente.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 rounded-top-4">
+                    <h4 class="card-title mb-1">Solicitações de senha</h4>
+                    <p class="text-body-secondary small mb-0">Pedidos pendentes exigem ação do time global.</p>
+                </div>
+                <div class="card-body">
+                    {% if pending_reset_requests %}
+                        <div class="list-group list-group-flush">
+                            {% for request in pending_reset_requests %}
+                                <div class="list-group-item px-0">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <strong>{{ request.user.nome_completo or request.user.username or request.user.matricula }}</strong>
+                                            <div class="small text-body-secondary">Solicitado em {{ request.created_at.strftime('%d/%m/%Y %H:%M') }}</div>
+                                        </div>
+                                        <span class="badge bg-warning-subtle text-warning">Pendente</span>
+                                    </div>
+                                    {% if request.note %}
+                                        <div class="small text-body-secondary mt-2">{{ request.note }}</div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-body-secondary mb-0">Nenhum pedido aguardando processamento.</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
+    <section class="support-hints mt-4">
+        <div class="alert alert-primary border-0 rounded-4 shadow-sm" role="alert">
+            <div class="d-flex flex-wrap gap-3 align-items-center">
+                <div class="icon-circle bg-primary-subtle text-primary">
+                    <i class="bi bi-life-preserver"></i>
+                </div>
+                <div class="flex-fill">
+                    <h5 class="mb-1">Checklist rápido antes de encerrar o turno</h5>
+                    <ul class="mb-0 small text-body-secondary">
+                        <li>Confirme se todas as escolas elegíveis possuem pelo menos um administrador ativo.</li>
+                        <li>Revise os pedidos de reset de senha pendentes e delegue quando necessário.</li>
+                        <li>Use o modo de visualização para validar layouts e permissões após alterações críticas.</li>
+                    </ul>
+                </div>
+                <a href="{{ url_for('relatorios.index') }}" class="btn btn-primary">
+                    <i class="bi bi-clipboard2-data me-2"></i> Gerar relatórios
+                </a>
+            </div>
+        </div>
+    </section>
 </div>
+
+<style>
+.super-admin-hero {
+    background: linear-gradient(135deg, rgba(35, 56, 118, 0.92), rgba(15, 23, 42, 0.92));
+    position: relative;
+}
+.super-admin-hero .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(30, 64, 175, 0.85), rgba(15, 23, 42, 0.85));
+    z-index: 1;
+}
+.super-admin-hero .hero-background {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.25;
+}
+.super-admin-hero .row {
+    position: relative;
+    z-index: 2;
+}
+.hero-card {
+    border: 1px solid rgba(226, 232, 240, 0.6);
+}
+.hero-icon {
+    width: 52px;
+    height: 52px;
+    display: grid;
+    place-items: center;
+    font-size: 1.35rem;
+    background: rgba(35, 56, 118, 0.1);
+    color: #1e3a8a;
+}
+.letter-spacing { letter-spacing: 0.08em; }
+.metric-card {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+    background: #ffffff;
+    border: 1px solid rgba(226, 232, 240, 0.7);
+}
+.metric-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+    display: grid;
+    place-items: center;
+    font-size: 1.6rem;
+}
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    display: block;
+    line-height: 1;
+}
+.metric-label {
+    display: block;
+    font-weight: 600;
+    color: #374151;
+}
+.school-card {
+    background: #f8fafc;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.school-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 30px -15px rgba(15, 23, 42, 0.35);
+}
+.stat-label {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+}
+.stat-number {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+.empty-state-img {
+    width: 140px;
+    opacity: 0.45;
+}
+.timeline {
+    margin: 0;
+    padding-left: 0;
+    position: relative;
+}
+.timeline::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    bottom: 12px;
+    left: 12px;
+    width: 2px;
+    background: rgba(15, 23, 42, 0.08);
+}
+.timeline-item {
+    position: relative;
+    padding-left: 2.5rem;
+    margin-bottom: 1.5rem;
+}
+.timeline-item:last-child { margin-bottom: 0; }
+.timeline-point {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #ffffff;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+.timeline-content {
+    background: rgba(248, 250, 252, 0.9);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(226, 232, 240, 0.7);
+}
+.icon-circle {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 1.5rem;
+}
+@media (max-width: 991.98px) {
+    .hero-card { margin-top: 1rem; }
+}
+</style>
 {% endblock %}
+
+
+

@@ -1,129 +1,119 @@
 {% extends "base.html" %}
 
-{% block title %}Detalhes da Turma - {{ turma.nome }}{% endblock %}
+{% block title %}Turma {{ turma.nome }}{% endblock %}
 
 {% block content %}
-<div class="content-header">
-    <h1>{{ turma.nome }}</h1>
-    <p>Visualize os alunos e os cargos desta turma.</p>
-</div>
-
-<div class="turma-details-grid">
-    <div class="details-section">
-        <div class="section-header">
-            <h3>Alunos na Turma ({{ turma.alunos|length }})</h3>
+<div class="container-fluid py-4 turma-details-page">
+    <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h1 class="fw-semibold mb-1">{{ turma.nome }}</h1>
+            <p class="text-body-secondary mb-0">Acompanhe os alunos matriculados, atribua cargos e mantenha as informações desta turma atualizadas.</p>
         </div>
-        
-        <div class="table-responsive">
-            <table class="table-styled">
-                <thead>
-                    <tr>
-                        <th>Nome Completo</th>
-                        {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
-                        {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
-                        <th>Matrícula</th>
-                        {% endif %}
-                </thead>
-                <tbody>
-                    {% for aluno in turma.alunos | sort(attribute='user.nome_completo') %}
-                    <tr>
-                        <td>{{ aluno.user.nome_completo or aluno.user.username }}</td>
-                        {% if current_user.role in [''super_admin'', ''programador'', ''admin_escola''] %}
-                        <td>{{ aluno.user.matricula }}</td>
-                        {% endif %}
-                    </tr>
-                    {% else %}
-                    {% else %}
-                    <tr>
-                        <td colspan="{% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}2{% else %}1{% endif %}" class="text-center">Nenhum aluno cadastrado nesta turma.</td>
-                    </tr>
-            </table>
-        </div>
+        <a href="{{ url_for('turma.listar_turmas') }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left me-2"></i> Voltar para lista de turmas
+        </a>
     </div>
 
-    {# --- CORREÇÃO APLICADA AQUI --- #}
-    {# Agora permite que 'aluno' e 'instrutor' também vejam os cargos #}
-    {% if current_user.role in ['programador', 'admin_escola', 'aluno', 'instrutor'] %}
-    <div class="details-section">
-        <div class="section-header">
-            <h3>Cargos da Turma</h3>
-        </div>
-        <form method="POST" action="{{ url_for('turma.salvar_cargos_turma', turma_id=turma.id) }}">
-            {{ form.hidden_tag() }}
-            <div class="cargos-grid">
-                {% for cargo in cargos_lista %}
-                <div class="form-group">
-                    <label for="cargo_{{ cargo }}">{{ cargo }}</label>
-                    <select id="cargo_{{ cargo }}" name="cargo_{{ cargo }}" class="form-control" {% if current_user.role in ['aluno', 'instrutor'] %}disabled{% endif %}>
-                        <option value="">-- Nenhum --</option>
-                        {% for aluno in turma.alunos | sort(attribute='user.nome_completo') %}
-                            <option value="{{ aluno.id }}" {% if cargos_atuais[cargo] == aluno.id %}selected{% endif %}>
-                                {{ aluno.user.nome_completo or aluno.user.username }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                {% endfor %}
-            </div>
-            <div class="form-actions">
-                <a href="{{ url_for('turma.listar_turmas') }}" class="btn btn-secondary">Voltar</a>
-                {# O botão de salvar só aparece para admins #}
-                {% if current_user.role in ['programador', 'admin_escola'] %}
-                    {{ form.submit(class="btn btn-primary") }}
-                {% endif %}
-            </div>
-        </form>
-    </div>
+    {% set can_manage = current_user.role in ['programador', 'admin_escola'] %}
+    {% set is_super_admin = current_user.role == 'super_admin' %}
+    {% if is_super_admin %}
+    <div class="alert alert-info" role="alert">Super Administradores possuem acesso somente leitura fora do painel do Super Admin.</div>
     {% endif %}
+
+    <div class="row g-4">
+        <div class="col-xl-7">
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-header bg-white border-0 rounded-top-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="card-title mb-1">Alunos na turma</h4>
+                        <p class="text-body-secondary small mb-0">Total de {{ turma.alunos|length }} aluno(s) vinculado(s).</p>
+                    </div>
+                    {% if can_manage %}
+                    <a href="{{ url_for('main.pre_cadastro', role='aluno') }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-person-plus me-1"></i> Pré-cadastrar
+                    </a>
+                    {% elif is_super_admin %}
+                    <button type="button" class="btn btn-sm btn-primary" disabled><i class="bi bi-person-plus me-1"></i> Pré-cadastrar</button>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0">
+                    {% if turma.alunos %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Nome completo</th>
+                                        <th>Matrícula</th>
+                                        <th>Contato</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for aluno in turma.alunos | sort(attribute='user.nome_completo') %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ aluno.user.nome_completo or aluno.user.username }}</strong>
+                                            <div class="text-body-secondary small">{{ aluno.user.nome_de_guerra or 'Sem nome de guerra' }}</div>
+                                        </td>
+                                        <td>{{ aluno.user.matricula or 'N/D' }}</td>
+                                        <td>{{ aluno.user.email or 'Sem e-mail' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="p-4 text-center text-body-secondary">
+                            Nenhum aluno cadastrado nesta turma até o momento.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-5">
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-header bg-white border-0 rounded-top-4">
+                    <h4 class="card-title mb-1">Cargos da turma</h4>
+                    <p class="text-body-secondary small mb-0">Associe os alunos aos cargos de liderança definidos para esta turma.</p>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('turma.salvar_cargos_turma', turma_id=turma.id) }}" class="vstack gap-3">
+                        {{ form.hidden_tag() }}
+                        <div class="row g-3">
+                            {% for cargo in cargos_lista %}
+                                <div class="col-md-6">
+                                    <label for="cargo_{{ cargo }}" class="form-label text-capitalize">{{ cargo }}</label>
+                                    <select id="cargo_{{ cargo }}" name="cargo_{{ cargo }}" class="form-select" {% if not can_manage %}disabled{% endif %}>
+                                        <option value="">Nenhum</option>
+                                        {% for aluno in turma.alunos | sort(attribute='user.nome_completo') %}
+                                            <option value="{{ aluno.id }}" {% if cargos_atuais[cargo] == aluno.id %}selected{% endif %}>
+                                                {{ aluno.user.nome_completo or aluno.user.username }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{{ url_for('turma.listar_turmas') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-2"></i> Voltar
+                            </a>
+                            {% if can_manage %}
+                                {{ form.submit(class="btn btn-primary") }}
+                            {% elif is_super_admin %}
+                                <button type="button" class="btn btn-primary" disabled>Salvar alterações</button>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
-.turma-details-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2rem;
+.turma-details-page .card {
+    border-radius: 1rem;
 }
-
-@media (min-width: 992px) {
-    .turma-details-grid {
-        grid-template-columns: 2fr 1fr;
-    }
-}
-
-.details-section {
-    background: var(--color-white);
-    border-radius: var(--border-radius);
-    padding: 2rem;
-    box-shadow: var(--shadow-soft);
-    border: 1px solid var(--color-border);
-}
-
-.section-header {
-    padding-bottom: 1rem;
-    margin-bottom: 1.5rem;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.section-header h3 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin: 0;
-}
-
-.cargos-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 0.5rem 1.5rem;
-}
-@media (min-width: 576px) {
-    .cargos-grid {
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    }
-}
-
 </style>
 {% endblock %}
-
-
-
-

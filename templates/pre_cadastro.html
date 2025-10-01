@@ -8,12 +8,18 @@
     <p>Insira a Matrícula para permitir que um novo usuário ative sua conta.</p>
 </div>
 
+{% set is_super_admin = current_user.role == 'super_admin' %}
+{% if is_super_admin %}
+<div class="alert alert-info" role="alert">Super Administradores possuem acesso somente leitura fora do painel do Super Admin.</div>
+{% endif %}
+
 <div class="table-container" style="max-width: 600px; margin: 0 auto;">
     <div class="table-header">
         <h3>Novo Pré-Cadastro de {{ role_predefinido|title if role_predefinido else 'Usuário' }}</h3>
     </div>
     
     <form method="POST" action="{{ url_for('main.pre_cadastro', role=role_predefinido) }}" style="padding: 1rem 0;">
+        <fieldset {% if is_super_admin %}disabled{% endif %}>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         {% if role_predefinido %}
@@ -52,6 +58,7 @@
             <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">Cancelar</a>
             <button type="submit" class="btn btn-primary">Salvar Pré-Cadastros</button>
         </div>
+            </fieldset>
     </form>
 </div>
 {% endblock %}

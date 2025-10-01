@@ -4,6 +4,12 @@
 
 {% block content %}
 <div class="horario-header-container">
+    {% set can_manage = current_user.role in ['programador', 'admin_escola', 'instrutor'] %}
+    {% set is_super_admin = current_user.role == 'super_admin' %}
+    {% if is_super_admin %}
+    <div class="alert alert-info" role="alert">Super Administradores possuem acesso somente leitura fora do painel do Super Admin.</div>
+    {% endif %}
+
     <div class="page-title-with-controls">
         <div class="title-group">
             <h1>Quadro Horário</h1>
@@ -12,7 +18,7 @@
         
         {# --- LÓGICA DO BOTÃO ATUALIZADA --- #}
         {# O botão agora fica sempre visível para os perfis com permissão #}
-        {% if current_user.role in ['programador', 'admin_escola', 'instrutor'] and semana_selecionada %}
+        {% if can_manage and semana_selecionada %}
         <div class="controls-group">
             <button type="button" class="btn btn-primary" onclick="openConfirmationModal()">
                 Agendar/Desmarcar Aulas
@@ -55,10 +61,12 @@
                     <option>Nenhuma semana cadastrada para este ciclo</option>
                 {% endif %}
             </select>
-            {% if current_user.role in ['admin_escola', 'programador'] %}
+            {% if can_manage %}
             <a href="{{ url_for('semana.gerenciar_semanas') }}" class="btn btn-sm btn-info">
                 Gerenciar Semanas
             </a>
+            {% elif is_super_admin %}
+            <button type="button" class="btn btn-sm btn-info" disabled>Gerenciar Semanas</button>
             {% endif %}
         </div>
     </div>

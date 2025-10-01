@@ -3,98 +3,164 @@
 {% block title %}Gerenciar Escolas{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h1 class="mb-4">Gerenciar Escolas</h1>
-
-    {# Formulário de Criação #}
-    <div class="card mb-4">
-        <div class="card-header">
-            Adicionar Nova Escola
+<div class="container-fluid py-4 manage-schools-page">
+    <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h1 class="fw-semibold mb-2">Mapa das Escolas</h1>
+            <p class="text-body-secondary mb-0">Crie novas unidades, distribua administradores e acompanhe o status das escolas existentes.</p>
         </div>
-        <div class="card-body">
-            <form method="POST" action="{{ url_for('super_admin.manage_schools') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <div class="form-group">
-                    <label for="school_name">Nome da Escola</label>
-                    <input type="text" class="form-control" id="school_name" name="school_name" required>
-                </div>
-                <button type="submit" class="btn btn-primary mt-3">Criar Escola</button>
-            </form>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('super_admin.manage_assignments') }}" class="btn btn-outline-primary">
+                <i class="bi bi-people-gear me-2"></i> Gerenciar Atribuições
+            </a>
+            <a href="{{ url_for('super_admin.dashboard') }}" class="btn btn-light">
+                <i class="bi bi-arrow-left me-2"></i> Voltar ao painel
+            </a>
         </div>
     </div>
 
-    {# Formulário de Criação de Administrador #}
-    <div class="card mb-4">
-        <div class="card-header">
-            Adicionar Novo Administrador de Escola
-        </div>
-        <div class="card-body">
-            <form method="POST" action="{{ url_for('super_admin.create_administrator') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <div class="form-group mb-3">
-                    <label for="nome_completo">Nome Completo</label>
-                    <input type="text" class="form-control" id="nome_completo" name="nome_completo" required>
+    <div class="row g-4">
+        <div class="col-xl-4">
+            <div class="card shadow-sm border-0 rounded-4 mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-circle bg-primary-subtle text-primary me-3">
+                            <i class="bi bi-building-add"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-1">Adicionar nova escola</h5>
+                            <small class="text-body-secondary">Cadastre unidades para disponibilizar o SiGA para novos polos.</small>
+                        </div>
+                    </div>
+                    <form method="POST" action="{{ url_for('super_admin.manage_schools') }}" class="vstack gap-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div>
+                            <label for="school_name" class="form-label">Nome da Escola</label>
+                            <input type="text" class="form-control form-control-lg" id="school_name" name="school_name" placeholder="Ex.: Escola EsFAS Recife" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-plus-circle me-2"></i> Criar Escola
+                        </button>
+                    </form>
                 </div>
-                <div class="form-group mb-3">
-                    <label for="email">Email</label>
-                    <input type="email" class="form-control" id="email" name="email" required>
-                </div>
-                <div class="form-group mb-3">
-                    <label for="matricula">Matrícula</label>
-                    <input type="text" class="form-control" id="matricula" name="matricula" required>
-                </div>
-                <div class="form-group mb-3">
-                    <label for="school_id">Escola</label>
-                    <select class="form-select" id="school_id" name="school_id" required>
-                        <option value="">-- Selecione a Escola --</option>
-                        {% for school in schools %}
-                            <option value="{{ school.id }}">{{ school.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-success mt-3">Criar Administrador</button>
-            </form>
-        </div>
-    </div>
+            </div>
 
-    {# Tabela de Escolas Existentes #}
-    <div class="card">
-        <div class="card-header">
-            Escolas Cadastradas
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-circle bg-success-subtle text-success me-3">
+                            <i class="bi bi-person-plus-fill"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-1">Cadastrar administrador de escola</h5>
+                            <small class="text-body-secondary">Crie acessos locais com senha temporária e vínculo imediato.</small>
+                        </div>
+                    </div>
+                    <form method="POST" action="{{ url_for('super_admin.create_administrator') }}" class="vstack gap-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div>
+                            <label for="nome_completo" class="form-label">Nome Completo</label>
+                            <input type="text" class="form-control" id="nome_completo" name="nome_completo" required>
+                        </div>
+                        <div>
+                            <label for="email" class="form-label">E-mail institucional</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div>
+                            <label for="matricula" class="form-label">Matrícula</label>
+                            <input type="text" class="form-control" id="matricula" name="matricula" maxlength="20" required>
+                        </div>
+                        <div>
+                            <label for="school_id" class="form-label">Escolha a Escola</label>
+                            <select class="form-select" id="school_id" name="school_id" required>
+                                <option value="">Selecione...</option>
+                                {% for school in schools %}
+                                    <option value="{{ school.id }}">{{ school.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-send-check me-2"></i> Criar Administrador
+                        </button>
+                        <div class="alert alert-info small mb-0" role="alert">
+                            A senha inicial é gerada automaticamente e exibida após o cadastro. Oriente o administrador a redefinir no primeiro acesso.
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            {% if schools %}
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th scope="col">ID</th>
-                            <th scope="col">Nome</th>
-                            <th scope="col">Ativa</th>
-                            <th scope="col">Criada em</th>
-                            <th scope="col">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for school in schools %}
-                        <tr>
-                            <th scope="row">{{ school.id }}</th>
-                            <td>{{ school.nome }}</td>
-                            <td>{{ 'Sim' if school.is_active else 'Não' }}</td>
-                            <td>{{ school.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
-                            <td>
-                                <form method="POST" action="{{ url_for('super_admin.delete_school', school_id=school.id) }}" onsubmit="return confirm('ATENÇÃO: Excluir esta escola irá remover permanentemente todos os seus dados (turmas, alunos, vínculos, etc.). Esta ação não pode ser desfeita. Deseja continuar?');">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <p class="text-center">Nenhuma escola cadastrada ainda.</p>
-            {% endif %}
+
+        <div class="col-xl-8">
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-header bg-white border-0 rounded-top-4 d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        <h4 class="card-title mb-1">Escolas cadastradas</h4>
+                        <p class="text-body-secondary small mb-0">Visão consolidada das unidades ativas e inativas.</p>
+                    </div>
+                    <span class="badge bg-primary-subtle text-primary">{{ schools|length }} escolas</span>
+                </div>
+                <div class="card-body p-4">
+                    {% if schools %}
+                        <div class="row g-3">
+                            {% for school in schools %}
+                                <div class="col-md-6">
+                                    <div class="school-tile h-100 p-3 border rounded-4">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="mb-0">{{ school.nome }}</h5>
+                                            <span class="badge {% if school.is_active %}bg-success-subtle text-success{% else %}bg-secondary-subtle text-secondary{% endif %}">
+                                                {% if school.is_active %}Ativa{% else %}Inativa{% endif %}
+                                            </span>
+                                        </div>
+                                        <small class="text-body-secondary d-block mb-3">Criada em {{ school.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                                        <div class="d-flex justify-content-between align-items-center mt-auto">
+                                            <form method="POST" action="{{ url_for('super_admin.delete_school', school_id=school.id) }}" onsubmit="return confirm('ATENÇÃO: Excluir esta escola remove definitivamente seus dados (turmas, alunos, vínculos). Deseja continuar?');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                    <i class="bi bi-trash me-1"></i> Excluir
+                                                </button>
+                                            </form>
+                                            <a href="{{ url_for('main.dashboard') }}?view_as_school={{ school.id }}" class="btn btn-link text-decoration-none">
+                                                <i class="bi bi-box-arrow-up-right me-1"></i> Ver painel
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <img src="{{ url_for('static', filename='img/brasao.png') }}" alt="Brasão EsFAS" class="empty-state-img mb-3" />
+                            <p class="text-body-secondary">Nenhuma escola cadastrada. Use o formulário ao lado para iniciar o rollout.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<style>
+.manage-schools-page .icon-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 1.3rem;
+}
+.school-tile {
+    background: #f8fafc;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.school-tile:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 30px -15px rgba(15, 23, 42, 0.22);
+}
+.empty-state-img {
+    width: 120px;
+    opacity: 0.55;
+}
+</style>
 {% endblock %}
+

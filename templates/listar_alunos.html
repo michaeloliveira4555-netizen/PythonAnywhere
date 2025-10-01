@@ -5,8 +5,16 @@
 {% block content %}
 <div class="content-header">
     <h1>Lista de Alunos</h1>
-    <p>Consulte e gerencie os alunos matriculados na escola.</p>
+    <p>Consulte os alunos matriculados e acompanhe seus dados acadêmicos.</p>
 </div>
+
+{% set can_manage = current_user.role in ['programador', 'admin_escola'] %}
+{% set is_super_admin = current_user.role == 'super_admin' %}
+{% if is_super_admin %}
+<div class="alert alert-info" role="alert">
+    Super Administradores possuem acesso somente leitura fora do painel do Super Admin.
+</div>
+{% endif %}
 
 <div class="table-container">
     <div class="table-header">
@@ -17,7 +25,7 @@
                 Todos os Alunos
             {% endif %}
         </h3>
-        {% if current_user.role in ['programador', 'admin_escola'] %}
+        {% if can_manage %}
         <div class="header-actions">
             <a href="{{ url_for('main.pre_cadastro', role='aluno') }}" class="btn btn-info">
                 <span>+</span> Inserir Pré-Cadastro
@@ -25,6 +33,11 @@
             <a href="{{ url_for('auth.register') }}" class="btn btn-primary">
                 <span>+</span> Cadastrar Novo Aluno
             </a>
+        </div>
+        {% elif is_super_admin %}
+        <div class="header-actions">
+            <button type="button" class="btn btn-info" disabled><span>+</span> Inserir Pré-Cadastro</button>
+            <button type="button" class="btn btn-primary" disabled><span>+</span> Cadastrar Novo Aluno</button>
         </div>
         {% endif %}
     </div>
@@ -38,7 +51,7 @@
                 {{ turma.nome }}
             </a>
             {% else %}
-            <p style="margin: 0.5rem; color: var(--color-text-muted);">Nenhuma turma cadastrada. Vá para a seção "Turmas" para criar uma.</p>
+            <p class="text-body-secondary" style="margin: 0.5rem;">Nenhuma turma cadastrada. Vá para a seção "Turmas" para criar uma.</p>
             {% endfor %}
             {% if turma_filtrada %}
             <a href="{{ url_for('aluno.listar_alunos') }}" class="btn btn-sm btn-danger">Limpar Filtro</a>
@@ -70,12 +83,14 @@
                         <td data-label="Ações" class="text-right">
                             <div class="btn-group">
                                 <a href="{{ url_for('historico.ver_historico_aluno', aluno_id=aluno.id) }}" class="btn btn-sm btn-info">Ver Histórico</a>
-                                {% if current_user.role in ['super_admin', 'programador', 'admin_escola'] %}
+                                {% if can_manage %}
                                 <a href="{{ url_for('aluno.editar_aluno', aluno_id=aluno.id) }}" class="btn btn-sm btn-warning">Editar</a>
                                 <form method="POST" action="{{ url_for('aluno.excluir_aluno', aluno_id=aluno.id) }}" onsubmit="return confirm('Tem certeza que deseja excluir este aluno? Esta ação não pode ser desfeita.');" style="display: inline;">
                                     {{ delete_form.hidden_tag() }}
                                     <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
                                 </form>
+                                {% elif is_super_admin %}
+                                <button type="button" class="btn btn-sm btn-outline-secondary" disabled>Somente leitura</button>
                                 {% endif %}
                             </div>
                         </td>
@@ -85,15 +100,9 @@
             </table>
         {% else %}
             <div class="empty-state">
-                <div class="empty-icon">👥</div>
+                <div class="empty-icon"><i class="bi bi-card-checklist"></i></div>
                 <h2>Nenhum Aluno Encontrado</h2>
-                <p>
-                    {% if turma_filtrada %}
-                        Não há alunos cadastrados nesta turma.
-                    {% else %}
-                        Nenhum aluno cadastrado no sistema.
-                    {% endif %}
-                </p>
+                <p>Nenhum registro corresponde aos filtros aplicados.</p>
             </div>
         {% endif %}
     </div>

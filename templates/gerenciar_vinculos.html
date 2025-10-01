@@ -5,16 +5,24 @@
 {% block content %}
 <div class="content-header">
     <h1>Gerenciar Vínculos</h1>
-    <p>Vincule instrutores a turmas e disciplinas.</p>
+    <p>Vincule instrutores a turmas e disciplinas, acompanhando as alocações atuais.</p>
 </div>
+
+{% set can_manage = current_user.role in ['programador', 'admin_escola'] %}
+{% set is_super_admin = current_user.role == 'super_admin' %}
+{% if is_super_admin %}
+<div class="alert alert-info" role="alert">Super Administradores possuem acesso somente leitura fora do painel do Super Admin.</div>
+{% endif %}
 
 <div class="table-container">
     <div class="table-header">
         <h3>Vínculos Existentes</h3>
-        {% if current_user.role in ['programador', 'admin_escola'] %}
+        {% if can_manage %}
         <a href="{{ url_for('vinculo.adicionar_vinculo') }}" class="btn btn-primary">
             <span>+</span> Inserir Novo Vínculo
         </a>
+        {% elif is_super_admin %}
+        <button type="button" class="btn btn-primary" disabled><span>+</span> Inserir Novo Vínculo</button>
         {% endif %}
     </div>
 
@@ -60,8 +68,7 @@
                         <td data-label="Turma">{{ vinculo.pelotao }}</td>
                         <td data-label="Disciplina">{{ vinculo.disciplina.materia }}</td>
                         <td data-label="Ciclo">{{ vinculo.disciplina.ciclo.nome if vinculo.disciplina.ciclo else 'N/A' }}</td>
-                        <td data-label="Instrutor">
-                            {# --- CORREÇÃO PARA MOSTRAR AMBOS OS INSTRUTORES --- #}
+                        <td data-label="Instrutores">
                             {% if vinculo.instrutor_1 %}
                                 <div><strong>1:</strong> {{ vinculo.instrutor_1.user.nome_completo or vinculo.instrutor_1.user.username }}</div>
                             {% endif %}
@@ -69,19 +76,21 @@
                                 <div><strong>2:</strong> {{ vinculo.instrutor_2.user.nome_completo or vinculo.instrutor_2.user.username }}</div>
                             {% endif %}
                             {% if not vinculo.instrutor_1 and not vinculo.instrutor_2 %}
-                                <span style="color: #aaa;">Não atribuído</span>
+                                <span class="text-body-secondary">Não atribuído</span>
                             {% endif %}
                         </td>
                         <td data-label="Ações" class="text-right">
                             <div class="btn-group">
-                                {% if current_user.role in ['programador', 'admin_escola'] %}
+                                {% if can_manage %}
                                 <a href="{{ url_for('vinculo.editar_vinculo', vinculo_id=vinculo.id) }}" class="btn btn-sm btn-warning">Editar</a>
                                 <form method="POST" action="{{ url_for('vinculo.excluir_vinculo', vinculo_id=vinculo.id) }}" onsubmit="return confirm('Tem certeza que deseja deletar este vínculo?');" style="display: inline;">
                                     {{ delete_form.hidden_tag() }}
                                     <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
                                 </form>
+                                {% elif is_super_admin %}
+                                <button type="button" class="btn btn-sm btn-outline-secondary" disabled>Somente leitura</button>
                                 {% else %}
-                                <span class="text-muted">Sem ações</span>
+                                <span class="text-body-secondary small">Sem permissões</span>
                                 {% endif %}
                             </div>
                         </td>
@@ -91,9 +100,9 @@
             </table>
         {% else %}
             <div class="empty-state">
-                <div class="empty-icon">🔗</div>
+                <div class="empty-icon"><i class="bi bi-collection"></i></div>
                 <h2>Nenhum Vínculo Encontrado</h2>
-                <p>Não há vínculos que correspondam aos filtros selecionados. Tente limpar os filtros ou adicione um novo vínculo.</p>
+                <p>Não há vínculos que correspondam aos filtros selecionados.</p>
             </div>
         {% endif %}
     </div>
@@ -110,6 +119,7 @@
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 1.5rem;
     align-items: end;
+    margin-bottom: 1.5rem;
 }
 </style>
 {% endblock %}

@@ -3,138 +3,189 @@
 {% block title %}Gerenciar Atribuições{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h1 class="mb-4">Gerenciar Atribuições de Papéis</h1>
-
-    {# Formulário de Atribuição #}
-    <div class="card mb-4">
-        <div class="card-header">
-            Atribuir Papel a Usuário em uma Escola
+<div class="container-fluid py-4 assignments-page">
+    <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h1 class="fw-semibold mb-2">Atribuições de Papéis</h1>
+            <p class="text-body-secondary mb-0">Vincule usuários às escolas corretas, acompanhe vínculos ativos e elimine cadastros órfãos.</p>
         </div>
-        <div class="card-body">
-            <form method="POST" action="{{ url_for('super_admin.manage_assignments') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <input type="hidden" name="action" value="assign">
-                
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="user_id">Usuário</label>
-                            <select id="user_id" name="user_id" class="form-control" required>
-                                <option value="" disabled selected>-- Selecione um Usuário --</option>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('super_admin.manage_schools') }}" class="btn btn-light">
+                <i class="bi bi-arrow-left me-2"></i> Voltar para escolas
+            </a>
+            <a href="{{ url_for('super_admin.dashboard') }}" class="btn btn-outline-primary">
+                <i class="bi bi-speedometer2 me-2"></i> Painel Super Admin
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-5">
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-circle bg-primary-subtle text-primary me-3">
+                            <i class="bi bi-person-lines-fill"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-1">Atribuir papel a um usuário</h5>
+                            <small class="text-body-secondary">Selecione o usuário, escolha a escola e defina o nível de acesso.</small>
+                        </div>
+                    </div>
+                    <form method="POST" action="{{ url_for('super_admin.manage_assignments') }}" class="vstack gap-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="hidden" name="action" value="assign">
+
+                        <div>
+                            <label for="user_id" class="form-label">Usuário</label>
+                            <select id="user_id" name="user_id" class="form-select" required>
+                                <option value="" disabled selected>Selecione um usuário...</option>
                                 {% for user in users %}
                                     <option value="{{ user.id }}">{{ user.nome_completo or user.username or user.matricula }}</option>
                                 {% endfor %}
                             </select>
                         </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="school_id">Escola</label>
-                            <select id="school_id" name="school_id" class="form-control" required>
-                                <option value="" disabled selected>-- Selecione uma Escola --</option>
-                                {% for school in schools %}
-                                    <option value="{{ school.id }}">{{ school.nome }}</option>
-                                {% endfor %}
-                            </select>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="school_id" class="form-label">Escola</label>
+                                <select id="school_id" name="school_id" class="form-select" required>
+                                    <option value="" disabled selected>Escolha...</option>
+                                    {% for school in schools %}
+                                        <option value="{{ school.id }}">{{ school.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="role" class="form-label">Papel</label>
+                                <select id="role" name="role" class="form-select" required>
+                                    <option value="admin_escola">Admin da Escola</option>
+                                    <option value="instrutor">Instrutor</option>
+                                    <option value="aluno">Aluno</option>
+                                </select>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            <label for="role">Papel</label>
-                            <select id="role" name="role" class="form-control" required>
-                                <option value="admin_escola" selected>Admin da Escola</option>
-                                <option value="instrutor">Instrutor</option>
-                                <option value="aluno">Aluno</option>
-                            </select>
+
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check2-circle me-2"></i> Confirmar atribuição
+                        </button>
+                        <div class="alert alert-info small mb-0" role="alert">
+                            O papel escolhido define o que será exibido no dashboard do usuário e quais ações ele pode executar.
                         </div>
-                    </div>
-                    <div class="col-md-1 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary">Atribuir</button>
-                    </div>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
-    </div>
 
-    {# Tabela de Atribuições Existentes #}
-    <div class="card mb-4">
-        <div class="card-header">
-            Atribuições Atuais
-        </div>
-        <div class="card-body">
-            {% if assignments %}
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th scope="col">Usuário</th>
-                            <th scope="col">Escola</th>
-                            <th scope="col">Papel</th>
-                            <th scope="col">Ação</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for assignment in assignments %}
-                        <tr>
-                            <td>{{ assignment.user.nome_completo or assignment.user.username or assignment.user.matricula }}</td>
-                            <td>{{ assignment.school.nome }}</td>
-                            <td>{{ assignment.role }}</td>
-                            <td>
-                                <form method="POST" action="{{ url_for('super_admin.manage_assignments') }}" onsubmit="return confirm('Tem certeza que deseja remover este vínculo?');">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <input type="hidden" name="action" value="remove">
-                                    <input type="hidden" name="user_id" value="{{ assignment.user_id }}">
-                                    <input type="hidden" name="school_id" value="{{ assignment.school_id }}">
-                                    <button type="submit" class="btn btn-danger btn-sm">Remover</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <p class="text-center">Nenhum papel atribuído ainda.</p>
-            {% endif %}
-        </div>
-    </div>
+        <div class="col-xl-7">
+            <div class="card shadow-sm border-0 rounded-4 mb-4">
+                <div class="card-header bg-white border-0 rounded-top-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="card-title mb-1">Vínculos ativos</h4>
+                        <p class="text-body-secondary small mb-0">Usuários atualmente associados às escolas.</p>
+                    </div>
+                    <span class="badge bg-success-subtle text-success">{{ assignments|length }} vínculos</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if assignments %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Usuário</th>
+                                        <th>Escola</th>
+                                        <th>Papel</th>
+                                        <th class="text-end">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for assignment in assignments %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ assignment.user.nome_completo or assignment.user.username or assignment.user.matricula }}</strong>
+                                                <div class="text-body-secondary small">{{ assignment.user.email or 'Sem e-mail' }}</div>
+                                            </td>
+                                            <td>{{ assignment.school.nome }}</td>
+                                            <td class="text-capitalize">{{ assignment.role.replace('_', ' ') }}</td>
+                                            <td class="text-end">
+                                                <form method="POST" action="{{ url_for('super_admin.manage_assignments') }}" class="d-inline" onsubmit="return confirm('Remover este vínculo? O usuário perderá o acesso a essa escola.');">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                    <input type="hidden" name="action" value="remove">
+                                                    <input type="hidden" name="user_id" value="{{ assignment.user_id }}">
+                                                    <input type="hidden" name="school_id" value="{{ assignment.school_id }}">
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                        <i class="bi bi-unlink me-1"></i> Remover
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="p-4 text-center text-body-secondary">Nenhum vínculo registrado até o momento.</div>
+                    {% endif %}
+                </div>
+            </div>
 
-    {# Tabela para Usuários Sem Escola #}
-    <div class="card">
-        <div class="card-header bg-warning text-dark">
-            Usuários Sem Escola Atribuída (Órfãos)
-        </div>
-        <div class="card-body">
-            {% if unassigned_users %}
-                <p class="text-muted">Estes usuários foram criados mas não estão vinculados a nenhuma escola. Eles podem ser excluídos com segurança se não forem mais necessários.</p>
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th scope="col">Nome Completo / Matrícula</th>
-                            <th scope="col">Email</th>
-                            <th scope="col">Papel Original</th>
-                            <th scope="col">Ação</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for user in unassigned_users %}
-                        <tr>
-                            <td>{{ user.nome_completo or user.matricula }}</td>
-                            <td>{{ user.email or 'N/A' }}</td>
-                            <td>{{ user.role }}</td>
-                            <td>
-                                <form method="POST" action="{{ url_for('super_admin.delete_user', user_id=user.id) }}" onsubmit="return confirm('ATENÇÃO: Esta ação irá EXCLUIR PERMANENTEMENTE o usuário e todos os seus dados. Deseja continuar?');">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <button type="submit" class="btn btn-danger btn-sm" title="Exclui permanentemente este usuário do sistema.">Excluir Usuário</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <p class="text-center text-success">Todos os usuários estão atribuídos a uma escola.</p>
-            {% endif %}
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-header bg-white border-0 rounded-top-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="card-title mb-1">Usuários sem escola</h4>
+                        <p class="text-body-secondary small mb-0">Limpe cadastros órfãos que não possuem vínculos ativos.</p>
+                    </div>
+                    <span class="badge bg-warning-subtle text-warning">{{ unassigned_users|length }} encontrados</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if unassigned_users %}
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Nome / Matrícula</th>
+                                        <th>E-mail</th>
+                                        <th>Papel original</th>
+                                        <th class="text-end">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in unassigned_users %}
+                                        <tr>
+                                            <td>{{ user.nome_completo or user.matricula }}</td>
+                                            <td>{{ user.email or 'Não informado' }}</td>
+                                            <td class="text-capitalize">{{ user.role.replace('_', ' ') }}</td>
+                                            <td class="text-end">
+                                                <form method="POST" action="{{ url_for('super_admin.delete_user', user_id=user.id) }}" onsubmit="return confirm('ATENÇÃO: Esta ação excluirá permanentemente o usuário e seus dados associados. Confirmar?');">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                        <i class="bi bi-trash3 me-1"></i> Excluir
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="p-4 text-center text-success">Ótimo! Todos os usuários estão corretamente vinculados.</div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<style>
+.assignments-page .icon-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 1.3rem;
+}
+</style>
 {% endblock %}
+

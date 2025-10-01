@@ -55,25 +55,26 @@ def dashboard():
 @login_required
 @admin_or_programmer_required
 def pre_cadastro():
-    if current_user.role == 'super_admin':
-        flash('Super Administradores não podem pré-cadastrar usuários. Use o painel de Super Admin para gerenciar escolas e administradores.', 'warning')
-        return redirect(url_for('super_admin.dashboard'))
-    
     role_arg = request.args.get('role')
 
     if request.method == 'POST':
-        # CORREÇÃO: Obter o ID da escola do usuário logado
+        if current_user.role == 'super_admin':
+            flash('Super Administradores possuem acesso somente leitura fora do painel do Super Admin.', 'warning')
+            return redirect(url_for('super_admin.dashboard'))
         school_id = UserService.get_current_school_id()
         if not school_id:
-            flash("Não foi possível identificar a escola do administrador. Ação cancelada.", "danger")
+            if current_user.role == 'super_admin':
+                flash('Selecione uma escola no painel do Super Admin antes de realizar pré-cadastros.', 'warning')
+                return redirect(url_for('super_admin.dashboard'))
+            flash('Não foi possível identificar a escola do administrador. Ação cancelada.', 'danger')
             return redirect(url_for('main.pre_cadastro', role=role_arg))
 
         form_data = request.form.to_dict()
         if role_arg and not form_data.get('role'):
             form_data['role'] = role_arg
 
-        matriculas_raw = form_data.get('matriculas', '').strip() 
-        if '/' in matriculas_raw or ' ' in matriculas_raw or ',' in matriculas_raw or ';' in matriculas_raw:
+        matriculas_raw = form_data.get('matriculas', '').strip()
+        if any(sep in matriculas_raw for sep in ('/', ' ', ',', ';')):
             partes = [p.strip() for p in matriculas_raw.replace(',', ' ').replace(';', ' ').split() if p.strip()]
             matriculas = [p for p in partes if p.isdigit()]
 
@@ -81,7 +82,6 @@ def pre_cadastro():
                 flash('Função não informada para pré-cadastro em lote.', 'danger')
                 return redirect(url_for('main.pre_cadastro', role=role_arg) if role_arg else url_for('main.pre_cadastro'))
 
-            # CORREÇÃO: Passar o school_id para a função
             success, novos, existentes = UserService.batch_pre_register_users(matriculas, form_data['role'], school_id)
             if success:
                 flash(f'Pré-cadastro realizado: {novos} novo(s), {existentes} já existente(s).', 'success')
@@ -90,12 +90,8 @@ def pre_cadastro():
             return redirect(url_for('main.pre_cadastro', role=role_arg) if role_arg else url_for('main.pre_cadastro'))
         else:
             form_data['matricula'] = matriculas_raw
-            # CORREÇÃO: Passar o school_id para a função
             success, message = UserService.pre_register_user(form_data, school_id)
-            if success:
-                flash(message, 'success')
-            else:
-                flash(message, 'danger')
+            flash(message, 'success' if success else 'danger')
             return redirect(url_for('main.pre_cadastro', role=role_arg) if role_arg else url_for('main.pre_cadastro'))
 
     schools = db.session.query(School).order_by(School.nome).all()
