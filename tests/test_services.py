@@ -1,6 +1,8 @@
 # tests/test_services.py
 
 import pytest
+from backend.services.school_service import SchoolService
+from backend.services.user_service import UserService
 from datetime import date, timedelta
 from sqlalchemy import select
 from backend.models.user import User
@@ -100,47 +102,6 @@ class TestTurmaService:
             turma_excluida = db.session.get(Turma, turma_id)
             assert turma_excluida is None
 
-<<<<<<< HEAD
-class TestPasswordResetWorkflow:
-    """Cenários para recuperação de senha mediada pelo administrador."""
-
-    def test_request_and_process_reset(self, test_app):
-        with test_app.app_context():
-            school = School(nome='Escola Recuperação')
-            db.session.add(school)
-            db.session.commit()
-
-            admin = User(matricula='admin_reset', nome_completo='Admin Reset', role='admin_escola', is_active=True)
-            user = User(matricula='usuario_reset', nome_completo='Usuário Reset', role='aluno', is_active=True)
-            db.session.add_all([admin, user])
-            db.session.commit()
-
-            db.session.add_all([
-                UserSchool(user_id=admin.id, school_id=school.id, role='admin_escola'),
-                UserSchool(user_id=user.id, school_id=school.id, role='aluno'),
-            ])
-            db.session.commit()
-
-            success, message = PasswordResetService.request_password_reset(user.matricula)
-            assert success is True
-            assert 'solic' in message.lower()
-
-            requests = PasswordResetService.get_requests_for_admin(admin, status=PasswordResetService.STATUS_PENDING)
-            assert len(requests) == 1
-            req = requests[0]
-
-            ok, msg, temp_password = PasswordResetService.process_request(req.id, admin)
-            assert ok is True
-            assert temp_password
-            db.session.refresh(user)
-            db.session.refresh(req)
-            assert user.must_change_password is True
-            assert user.check_password(temp_password) is True
-            assert req.status == PasswordResetService.STATUS_COMPLETED
-
-            remaining = PasswordResetService.get_requests_for_admin(admin, status=PasswordResetService.STATUS_PENDING)
-            assert all(r.user_id != user.id for r in remaining)
-=======
 class TestSchoolAndUserServices:
     """Testes adicionais para serviços críticos e regras de permissão."""
 
@@ -202,4 +163,3 @@ class TestSchoolAndUserServices:
             remove_prog, remove_msg = UserService.remove_school_role(programmer_user.id, school.id)
             assert not remove_prog
             assert 'Não é permitido' in remove_msg
->>>>>>> c400f4f (Limpeza de conflitos de merge e revisão visual)

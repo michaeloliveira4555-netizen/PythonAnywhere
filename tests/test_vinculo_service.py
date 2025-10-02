@@ -29,11 +29,7 @@ def setup_data(db_session):
     db_session.add(user_instrutor)
     db_session.commit()
 
-<<<<<<< HEAD
     instrutor = Instrutor(user_id=user_instrutor.id, telefone=None, is_rr=False)
-=======
-    instrutor = Instrutor(user_id=user_instrutor.id, telefone=None)
->>>>>>> c400f4f (Limpeza de conflitos de merge e revisão visual)
     db_session.add(instrutor)
     db_session.commit()
 
@@ -89,11 +85,7 @@ class TestVinculoService:
         user_novo_instrutor = User(username='instrutor2', matricula='inst2', email='instrutor2@test.com', posto_graduacao='Tenente')
         db_session.add(user_novo_instrutor)
         db_session.commit()
-<<<<<<< HEAD
         novo_instrutor = Instrutor(user_id=user_novo_instrutor.id, telefone=None, is_rr=False)
-=======
-        novo_instrutor = Instrutor(user_id=user_novo_instrutor.id, telefone=None)
->>>>>>> c400f4f (Limpeza de conflitos de merge e revisão visual)
         db_session.add(novo_instrutor)
         db_session.commit()
 

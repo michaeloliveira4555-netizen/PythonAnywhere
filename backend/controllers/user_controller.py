@@ -226,10 +226,7 @@ def criar_admin_escola():
             base_username = (email.split("@")[0] if "@" in email else email)
             username = generate_unique_username(base_username)
 
-<<<<<<< HEAD
             # Checagens duras em email / matricula
-=======
->>>>>>> c400f4f (Limpeza de conflitos de merge e revisão visual)
             if exists_in_users_by("email", email):
                 flash("E-mail já está em uso na tabela de usuários.", "warning")
                 return redirect(url_for("user.criar_admin_escola"))
@@ -261,18 +258,14 @@ def criar_admin_escola():
                 flash(f"Administrador criado com sucesso. Username: {username} • Senha temporária: {temp_pass}", "success")
                 return redirect(url_for("user.lista_admins_escola"))
 
-<<<<<<< HEAD
-            # ORM
-            user = User()  # type: ignore
-            if hasattr(user, "matricula"): user.matricula = matricula  # type: ignore
-            if hasattr(user, "username"): user.username = username  # type: ignore
-            if hasattr(user, "email"): user.email = email  # type: ignore
-            if hasattr(user, "nome_completo"): user.nome_completo = nome  # type: ignore
-            if hasattr(user, "role"): user.role = "admin_escola"  # type: ignore
-            if hasattr(user, "is_active"): user.is_active = True  # type: ignore
-            if hasattr(user, "must_change_password"): user.must_change_password = True  # type: ignore
-=======
->>>>>>> c400f4f (Limpeza de conflitos de merge e revisão visual)
+            user = User()
+            if hasattr(user, "id_func"): user.id_func = id_func
+            if hasattr(user, "username"): user.username = username
+            if hasattr(user, "email"): user.email = email
+            if hasattr(user, "nome_completo"): user.nome_completo = nome
+            if hasattr(user, "role"): user.role = "admin_escola"
+            if hasattr(user, "is_active"): user.is_active = True
+            if hasattr(user, "must_change_password"): user.must_change_password = True
             user = User()
             if hasattr(user, "id_func"): user.id_func = id_func
             if hasattr(user, "username"): user.username = username
