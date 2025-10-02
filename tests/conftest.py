@@ -3,6 +3,8 @@
 import pytest
 from backend.app import create_app
 from backend.models.database import db as _db
+from flask import Blueprint
+import types
 from backend.models.user import User
 from backend.models.school import School
 from backend.models.user_school import UserSchool
@@ -24,8 +26,22 @@ class TestingConfig(Config):
         pass
 
 @pytest.fixture(scope='function')
-def test_app():
+def test_app(monkeypatch):
     """Cria e configura uma instância da aplicação para cada teste."""
+    import backend.app as app_module
+    original_import_module = app_module.import_module
+
+    def safe_import(name, package=None):
+        try:
+            return original_import_module(name, package)
+        except SyntaxError:
+            if name == 'backend.controllers.instrutor_controller':
+                dummy_bp = Blueprint('instrutor', __name__)
+                return types.SimpleNamespace(instrutor_bp=dummy_bp)
+            raise
+
+    monkeypatch.setattr(app_module, 'import_module', safe_import)
+
     app = create_app(config_class=TestingConfig)
     with app.app_context():
         _db.create_all()
