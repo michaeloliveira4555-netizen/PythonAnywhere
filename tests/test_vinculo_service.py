@@ -29,7 +29,7 @@ def setup_data(db_session):
     db_session.add(user_instrutor)
     db_session.commit()
 
-    instrutor = Instrutor(user_id=user_instrutor.id, posto_graduacao='Sargento', telefone=None)
+    instrutor = Instrutor(user_id=user_instrutor.id, telefone=None)
     db_session.add(instrutor)
     db_session.commit()
 
@@ -85,7 +85,7 @@ class TestVinculoService:
         user_novo_instrutor = User(username='instrutor2', matricula='inst2', email='instrutor2@test.com')
         db_session.add(user_novo_instrutor)
         db_session.commit()
-        novo_instrutor = Instrutor(user_id=user_novo_instrutor.id, posto_graduacao='Tenente', telefone=None)
+        novo_instrutor = Instrutor(user_id=user_novo_instrutor.id, telefone=None)
         db_session.add(novo_instrutor)
         db_session.commit()
 

@@ -26,12 +26,104 @@ class TestAuthController:
         pass # Placeholder for existing test
 
 class TestPermissionSystem:
-    """Testes para o sistema de permissões."""
-    # ... (os testes de permissão que já passam) ...
-    def test_school_admin_cannot_access_super_admin_dashboard(self, test_client, test_app):
-        pass # Placeholder for existing test
-    def test_super_admin_view_as_school_context(self, test_client, test_app):
-        pass # Placeholder for existing test
+    """Testes para o sistema de permissões e perfis especiais."""
+
+    def _login(self, client, username, password):
+        return client.post('/login', data={'username': username, 'password': password}, follow_redirects=True)
+
+    def test_super_admin_pre_cadastro_read_only(self, test_client, test_app):
+        with test_app.app_context():
+            super_admin = User(matricula='sa_perm', username='sa_perm', email='sa@admin.com', role='super_admin', is_active=True)
+            super_admin.set_password('superpass')
+            escola = School(nome='Escola Permissão')
+            db.session.add_all([super_admin, escola])
+            db.session.commit()
+            escola_id = escola.id
+
+        with test_client as client:
+            self._login(client, 'sa_perm', 'superpass')
+            get_response = client.get('/pre-cadastro')
+            assert get_response.status_code == 200
+            post_response = client.post('/pre-cadastro', data={'matriculas': '99999', 'school_id': str(escola_id), 'role': 'aluno'}, follow_redirects=True)
+            assert post_response.status_code == 200
+            assert 'somente leitura' in post_response.get_data(as_text=True)
+
+        with test_app.app_context():
+            created = db.session.scalar(select(User).filter_by(matricula='99999'))
+            assert created is None
+
+    def test_super_admin_blocked_on_admin_pre_cadastro(self, test_client, test_app):
+        with test_app.app_context():
+            super_admin = User(matricula='sa_admin', username='sa_admin', email='dash@admin.com', role='super_admin', is_active=True)
+            super_admin.set_password('superpass')
+            escola = School(nome='Escola Painel Admin')
+            db.session.add_all([super_admin, escola])
+            db.session.commit()
+
+        with test_client as client:
+            self._login(client, 'sa_admin', 'superpass')
+            response = client.post('/admin-escola/pre-cadastro', data={'matriculas': '12345', 'role': 'aluno', 'school_id': '1'}, follow_redirects=True)
+            assert response.status_code == 200
+            assert 'somente leitura' in response.get_data(as_text=True)
+
+        with test_app.app_context():
+            assert db.session.scalar(select(User).filter_by(matricula='12345')) is None
+
+    def test_admin_pre_cadastro_uses_own_school(self, test_client, test_app):
+        with test_app.app_context():
+            school = School(nome='Escola Admin Local')
+            admin_user = User(matricula='adm_local', username='adm_local', email='admin@local.com', role='admin_escola', is_active=True)
+            admin_user.set_password('adminpass')
+            db.session.add_all([school, admin_user])
+            db.session.commit()
+            db.session.add(UserSchool(user_id=admin_user.id, school_id=school.id, role='admin_escola'))
+            db.session.commit()
+
+        with test_client as client:
+            self._login(client, 'adm_local', 'adminpass')
+            response = client.post('/admin-escola/pre-cadastro', data={'matriculas': '20001 20002', 'role': 'aluno'}, follow_redirects=True)
+            assert response.status_code == 200
+            assert 'sucesso' in response.get_data(as_text=True).lower()
+
+        with test_app.app_context():
+            created_users = db.session.scalars(select(User).filter(User.matricula.in_(['20001', '20002']))).all()
+            assert len(created_users) == 2
+            for created in created_users:
+                link = db.session.scalar(select(UserSchool).filter_by(user_id=created.id, school_id=school.id))
+                assert link is not None
+                assert link.role == 'aluno'
+
+    def test_super_admin_cannot_approve_horario(self, test_client, test_app):
+        with test_app.app_context():
+            super_admin = User(matricula='sa_sched', username='sa_sched', email='sched@admin.com', role='super_admin', is_active=True)
+            super_admin.set_password('superpass')
+            escola = School(nome='Escola Agenda Permissão')
+            ciclo = Ciclo(nome='Ciclo Agenda Permissão')
+            db.session.add_all([super_admin, escola, ciclo])
+            db.session.commit()
+            semana = Semana(nome='Semana Agenda', data_inicio=date.today(), data_fim=date.today() + timedelta(days=6), ciclo_id=ciclo.id)
+            instrutor_user = User(matricula='instr_sched', username='instr_sched', role='instrutor', is_active=True)
+            instrutor_user.set_password('instrpass')
+            disciplina = Disciplina(materia='Disciplina Agenda', carga_horaria_prevista=10, school_id=escola.id, ciclo_id=ciclo.id)
+            db.session.add_all([semana, instrutor_user, disciplina])
+            db.session.commit()
+            instrutor = Instrutor(user_id=instrutor_user.id, telefone=None, is_rr=False)
+            db.session.add(instrutor)
+            db.session.commit()
+            horario = Horario(pelotao='Pel Agenda', dia_semana='segunda', periodo=1, duracao=1, semana_id=semana.id, disciplina_id=disciplina.id, instrutor_id=instrutor.id, status='pendente')
+            db.session.add(horario)
+            db.session.commit()
+            horario_id = horario.id
+
+        with test_client as client:
+            self._login(client, 'sa_sched', 'superpass')
+            response_post = client.post('/horario/aprovar', data={'horario_id': horario_id, 'action': 'aprovar'}, follow_redirects=True)
+            assert response_post.status_code == 200
+            assert 'somente leitura' in response_post.get_data(as_text=True)
+
+        with test_app.app_context():
+            horario_atualizado = db.session.get(Horario, horario_id)
+            assert horario_atualizado.status == 'pendente'
 
 class TestWorkflow:
     """

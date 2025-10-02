@@ -82,7 +82,7 @@ class MeuPerfilForm(FlaskForm):
 def norm_email(v: Optional[str]) -> Optional[str]:
     return v.strip().lower() if v else None
 
-def norm_matricula(v: Optional[str]) -> Optional[str]:
+def norm_idfunc(v: Optional[str]) -> Optional[str]:
     if not v:
         return None
     return re.sub(r"\D+", "", v.strip()) or None
@@ -207,7 +207,7 @@ def criar_admin_escola():
         try:
             nome = (request.form.get("nome") or "").strip()
             email = norm_email(request.form.get("email"))
-            matricula = norm_matricula(request.form.get("matricula"))
+            id_func = norm_idfunc(request.form.get("id_func"))
             telefone = (request.form.get("telefone") or "").strip()
 
             if not nome:
@@ -216,8 +216,8 @@ def criar_admin_escola():
             if not email:
                 flash("Informe um e-mail válido.", "warning")
                 return redirect(url_for("user.criar_admin_escola"))
-            if not matricula:
-                flash("Informe a Matrícula (apenas números).", "warning")
+            if not id_func:
+                flash("Informe a ID Func (apenas números).", "warning")
                 return redirect(url_for("user.criar_admin_escola"))
             if not escola_id:
                 flash("Não foi possível identificar a escola do usuário atual.", "danger")
@@ -226,15 +226,11 @@ def criar_admin_escola():
             base_username = (email.split("@")[0] if "@" in email else email)
             username = generate_unique_username(base_username)
 
-<<<<<<< HEAD
-            # Checagens duras em email / matricula
-=======
->>>>>>> 74d55fc3fbee926aa951f4580f9a2976da5bcef9
             if exists_in_users_by("email", email):
                 flash("E-mail já está em uso na tabela de usuários.", "warning")
                 return redirect(url_for("user.criar_admin_escola"))
-            if exists_in_users_by("matricula", matricula):
-                flash("Matrícula já está em uso na tabela de usuários.", "warning")
+            if exists_in_users_by("id_func", id_func):
+                flash("ID Func já está em uso na tabela de usuários.", "warning")
                 return redirect(url_for("user.criar_admin_escola"))
 
             temp_pass = secrets.token_urlsafe(8)
@@ -243,12 +239,12 @@ def criar_admin_escola():
             if User is None:
                 insert_sql = """
                     INSERT INTO users
-                        (matricula, username, email, password_hash, nome_completo, role, is_active, must_change_password)
+                        (id_func, username, email, password_hash, nome_completo, role, is_active, must_change_password)
                     VALUES
-                        (:matricula, :username, :email, :password_hash, :nome, :role, 1, 1)
+                        (:id_func, :username, :email, :password_hash, :nome, :role, 1, 1)
                 """
                 db.session.execute(text(insert_sql), {
-                    "matricula": matricula,
+                    "id_func": id_func,
                     "username": username,
                     "email": email,
                     "password_hash": password_hash,
@@ -261,17 +257,6 @@ def criar_admin_escola():
                 flash(f"Administrador criado com sucesso. Username: {username} • Senha temporária: {temp_pass}", "success")
                 return redirect(url_for("user.lista_admins_escola"))
 
-<<<<<<< HEAD
-            # ORM
-            user = User()  # type: ignore
-            if hasattr(user, "matricula"): user.matricula = matricula  # type: ignore
-            if hasattr(user, "username"): user.username = username  # type: ignore
-            if hasattr(user, "email"): user.email = email  # type: ignore
-            if hasattr(user, "nome_completo"): user.nome_completo = nome  # type: ignore
-            if hasattr(user, "role"): user.role = "admin_escola"  # type: ignore
-            if hasattr(user, "is_active"): user.is_active = True  # type: ignore
-            if hasattr(user, "must_change_password"): user.must_change_password = True  # type: ignore
-=======
             user = User()
             if hasattr(user, "id_func"): user.id_func = id_func
             if hasattr(user, "username"): user.username = username
@@ -280,7 +265,6 @@ def criar_admin_escola():
             if hasattr(user, "role"): user.role = "admin_escola"
             if hasattr(user, "is_active"): user.is_active = True
             if hasattr(user, "must_change_password"): user.must_change_password = True
->>>>>>> 74d55fc3fbee926aa951f4580f9a2976da5bcef9
 
             set_password_hash_on_user(user, temp_pass)
 
@@ -297,8 +281,8 @@ def criar_admin_escola():
             msg = str(ie.orig) if getattr(ie, "orig", None) else str(ie)
             if "email" in msg.lower():
                 flash("Conflito: e-mail já cadastrado.", "danger")
-            elif "matricula" in msg.lower():
-                flash("Conflito: Matrícula já cadastrada.", "danger")
+            elif "id_func" in msg.lower():
+                flash("Conflito: ID Func já cadastrada.", "danger")
             elif "username" in msg.lower():
                 flash("Conflito de username. Tente novamente.", "danger")
             else:
