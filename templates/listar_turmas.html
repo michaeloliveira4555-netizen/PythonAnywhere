@@ -22,14 +22,10 @@
             <a href="{{ url_for('turma.cadastrar_turma') }}" class="btn btn-primary">
                 <span>+</span> Cadastrar Nova Turma
             </a>
-            <button type="button" class="btn btn-warning" onclick="openModal('editModal')">Editar Turma</button>
-            <button type="button" class="btn btn-danger" onclick="openModal('deleteModal')">Excluir Turma</button>
         </div>
         {% elif is_super_admin %}
         <div class="header-actions">
             <button type="button" class="btn btn-primary" disabled><span>+</span> Cadastrar Nova Turma</button>
-            <button type="button" class="btn btn-warning" disabled>Editar Turma</button>
-            <button type="button" class="btn btn-danger" disabled>Excluir Turma</button>
         </div>
         {% endif %}
     </div>

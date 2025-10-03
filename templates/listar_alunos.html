@@ -27,16 +27,12 @@
         </h3>
         {% if can_manage %}
         <div class="header-actions">
-            <a href="{{ url_for('main.pre_cadastro', role='aluno') }}" class="btn btn-info">
-                <span>+</span> Inserir Pré-Cadastro
-            </a>
             <a href="{{ url_for('auth.register') }}" class="btn btn-primary">
                 <span>+</span> Cadastrar Novo Aluno
             </a>
         </div>
         {% elif is_super_admin %}
         <div class="header-actions">
-            <button type="button" class="btn btn-info" disabled><span>+</span> Inserir Pré-Cadastro</button>
             <button type="button" class="btn btn-primary" disabled><span>+</span> Cadastrar Novo Aluno</button>
         </div>
         {% endif %}

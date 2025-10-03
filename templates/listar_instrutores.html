@@ -19,16 +19,12 @@
         <h3>Instrutores Cadastrados</h3>
         {% if can_manage %}
         <div class="header-actions">
-            <a href="{{ url_for('main.pre_cadastro', role='instrutor') }}" class="btn btn-info">
-                <span>+</span> Inserir Pré-Cadastro
-            </a>
             <a href="{{ url_for('instrutor.cadastrar_instrutor') }}" class="btn btn-primary">
                 <span>+</span> Cadastrar Novo Instrutor
             </a>
         </div>
         {% elif is_super_admin %}
         <div class="header-actions">
-            <button type="button" class="btn btn-info" disabled><span>+</span> Inserir Pré-Cadastro</button>
             <button type="button" class="btn btn-primary" disabled><span>+</span> Cadastrar Novo Instrutor</button>
         </div>
         {% endif %}

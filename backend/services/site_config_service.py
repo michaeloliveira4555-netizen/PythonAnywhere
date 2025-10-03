@@ -75,9 +75,14 @@ class SiteConfigService:
 
         # 2. Validar o valor com base no tipo
         if expected_type == 'image':
-            # Para imagens, o valor deve ser uma URL relativa para static/uploads
+            # Para imagens, o valor deve ser uma URL relativa para static/uploads ou static/img
             # ou vazia. Não permitir URLs arbitrárias para prevenir XSS.
-            if value and not (value.startswith('/static/uploads/') or value.startswith('http') or value.startswith('https')):
+            if value and not (
+                value.startswith('/static/uploads/') or
+                value.startswith('/static/img/') or
+                value.startswith('http') or
+                value.startswith('https')
+            ):
                 raise ValueError(f"Valor inválido para configuração de imagem: {value}. Deve ser uma URL de asset válida.")
             # Further validation could check if the asset actually exists in ImageAsset table
         elif expected_type == 'color':

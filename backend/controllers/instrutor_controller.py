@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-=======
 from __future__ import annotations
-
->>>>>>> c400f4f (Limpeza de conflitos de merge e revisão visual)
 from typing import Optional as TypingOptional
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
@@ -81,25 +77,14 @@ def _resolve_school_id_for_user(user: User) -> TypingOptional[int]:
 
 
 def _ensure_school_id_for_current_user() -> TypingOptional[int]:
-    resolved = _resolve_school_id_for_user(current_user)
-    if resolved:
-        return resolved
+    if hasattr(current_user, 'id'):
+        resolved = _resolve_school_id_for_user(current_user)
+        if resolved:
+            return resolved
     school_ids = [row[0] for row in db.session.execute(db.select(School.id)).all()]
     return school_ids[0] if len(school_ids) == 1 else None
 
 
-def _ensure_user_school_link(user_id: int, school_id: int) -> None:
-    exists = db.session.scalar(
-        select(UserSchool).where(
-            UserSchool.user_id == user_id,
-            UserSchool.school_id == school_id
-        )
-    )
-    if not exists:
-        db.session.add(UserSchool(user_id=user_id, school_id=school_id, role='instrutor'))
-
-
-def _sync_user_with_payload(user: User, payload: dict) -> None:
     nome_completo = payload.get('nome_completo') or ''
     nome_de_guerra = payload.get('nome_de_guerra') or ''
     matricula = payload.get('matricula') or ''
@@ -117,23 +102,9 @@ def _sync_user_with_payload(user: User, payload: dict) -> None:
     user.role = user.role or 'instrutor'
     if user.role != 'instrutor':
         user.role = 'instrutor'
-    user.is_active = True
+    if hasattr(user, 'is_active'):
+        user.is_active = True
 
-
-def _populate_instrutor_form(form: InstrutorBaseForm, instrutor: Instrutor) -> None:
-    user = db.session.get(User, instrutor.user_id) if instrutor.user_id else None
-    if user:
-        form.nome_completo.data = user.nome_completo or ''
-        form.nome_de_guerra.data = user.nome_de_guerra or ''
-    form.telefone.data = instrutor.telefone or ''
-    allowed_postos = {choice[0] for choice in POSTOS_CHOICES}
-    if instrutor.posto_graduacao in allowed_postos:
-        form.posto_graduacao_select.data = instrutor.posto_graduacao
-        form.posto_graduacao_outro.data = ''
-    else:
-        form.posto_graduacao_select.data = 'Outro'
-        form.posto_graduacao_outro.data = instrutor.posto_graduacao or ''
-    form.is_rr.data = bool(getattr(instrutor, 'is_rr', False))
 
 
 @instrutor_bp.route('/')
@@ -151,19 +122,7 @@ def listar_instrutores():
 def cadastrar_instrutor():
     form = CadastroInstrutorForm()
     if request.method == 'POST' and form.validate_on_submit():
-<<<<<<< HEAD
-        school_id = _ensure_school_id_for_current_user()
-        if not school_id:
-            flash('Não foi possível identificar a escola para vincular o instrutor.', 'danger')
-            return redirect(url_for('instrutor.listar_instrutores'))
-
-        payload = request.form.to_dict(flat=True)
-        success, message = InstrutorService.create_full_instrutor(payload, school_id)
-        flash(message, 'success' if success else 'danger')
-        if success:
-            return redirect(url_for('instrutor.listar_instrutores'))
-=======
-        payload = request.form.to_dict(flat=True)
+        payload = request.form.to_dict(flat=False)
         school_id = _ensure_school_id_for_current_user() or UserService.get_current_school_id()
         if not school_id:
             flash('Não foi possível identificar a escola para associar o instrutor.', 'danger')
@@ -191,7 +150,6 @@ def cadastrar_instrutor():
                 flash(message, 'success' if ok else 'danger')
                 if ok:
                     return redirect(url_for('instrutor.listar_instrutores'))
->>>>>>> c400f4f (Limpeza de conflitos de merge e revisão visual)
     return render_template('cadastro_instrutor.html', form=form)
 
 
@@ -205,19 +163,12 @@ def editar_instrutor(instrutor_id: int):
         return redirect(url_for('instrutor.listar_instrutores'))
 
     form = EditarInstrutorForm()
-<<<<<<< HEAD
-    if request.method == 'POST' and form.validate_on_submit():
-        success, message = InstrutorService.update_instrutor(instrutor_id, request.form.to_dict(flat=True))
-        flash(message, 'success' if success else 'danger')
-        if success:
-=======
     if request.method == 'GET':
         _populate_instrutor_form(form, instrutor)
-    if form.validate_on_submit():
-        ok, message = InstrutorService.update_instrutor(instrutor_id, request.form.to_dict(flat=True))
+    if request.method == 'POST' and form.validate_on_submit():
+        ok, message = InstrutorService.update_instrutor(instrutor_id, request.form.to_dict(flat=False))
         flash(message, 'success' if ok else 'danger')
         if ok:
->>>>>>> c400f4f (Limpeza de conflitos de merge e revisão visual)
             return redirect(url_for('instrutor.listar_instrutores'))
     return render_template('editar_instrutor.html', form=form, instrutor=instrutor)
 
@@ -229,7 +180,7 @@ def completar_cadastro():
     profile: TypingOptional[Instrutor] = getattr(current_user, 'instrutor_profile', None)
 
     if request.method == 'POST' and form.validate_on_submit():
-        payload = request.form.to_dict(flat=True)
+        payload = request.form.to_dict(flat=False)
         if profile:
             success, message = InstrutorService.update_instrutor(profile.id, payload)
         else:
@@ -262,7 +213,6 @@ def excluir_instrutor(instrutor_id: int):
     ok, message = InstrutorService.delete_instrutor(instrutor_id)
     flash(message, 'success' if ok else 'danger')
     return redirect(url_for('instrutor.listar_instrutores'))
-<<<<<<< HEAD
 
 
 def _populate_instrutor_form(form: InstrutorBaseForm, instrutor: Instrutor) -> None:
@@ -270,14 +220,17 @@ def _populate_instrutor_form(form: InstrutorBaseForm, instrutor: Instrutor) -> N
     if user:
         form.nome_completo.data = user.nome_completo or ''
         form.nome_de_guerra.data = user.nome_de_guerra or ''
+        posto_graduacao = getattr(user, 'posto_graduacao', None)
+    else:
+        posto_graduacao = None
     form.telefone.data = instrutor.telefone or ''
     allowed_postos = {choice[0] for choice in POSTOS_CHOICES}
-    if instrutor.posto_graduacao in allowed_postos:
-        form.posto_graduacao_select.data = instrutor.posto_graduacao
+    if posto_graduacao in allowed_postos:
+        form.posto_graduacao_select.data = posto_graduacao
         form.posto_graduacao_outro.data = ''
     else:
         form.posto_graduacao_select.data = 'Outro'
-        form.posto_graduacao_outro.data = instrutor.posto_graduacao or ''
+        form.posto_graduacao_outro.data = posto_graduacao or ''
     form.is_rr.data = bool(getattr(instrutor, 'is_rr', False))
 
 
@@ -299,7 +252,6 @@ def _sync_user_with_payload(user: User, payload: dict) -> None:
     user.role = user.role or 'instrutor'
     if user.role != 'instrutor':
         user.role = 'instrutor'
-    user.is_active = True
 
 
 def _ensure_user_school_link(user_id: int, school_id: int) -> None:
@@ -310,6 +262,8 @@ def _ensure_user_school_link(user_id: int, school_id: int) -> None:
         )
     )
     if not exists:
-        db.session.add(UserSchool(user_id=user_id, school_id=school_id, role='instrutor'))
-=======
->>>>>>> c400f4f (Limpeza de conflitos de merge e revisão visual)
+        us = UserSchool()
+        us.user_id = user_id
+        us.school_id = school_id
+        us.role = 'instrutor'
+        db.session.add(us)

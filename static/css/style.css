@@ -1,4 +1,101 @@
 /* =============================================================
+   Login - Card Moderno
+   ============================================================= */
+
+.auth-page-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 260px;
+    background: rgba(255,255,255,0.99);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 16px rgba(37,99,235,0.13), 0 1.5px 8px rgba(15,23,42,0.08);
+    padding: 1.2rem 1rem 1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.7rem;
+    border: 1px solid rgba(37,99,235,0.12);
+    backdrop-filter: blur(7px);
+    transition: box-shadow 0.2s, border 0.2s;
+}
+
+.card-logo-container {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, #2563eb22 0%, #0ea5e922 100%);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.08);
+}
+
+.auth-card h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-primary-strong);
+    margin-bottom: 0.5rem;
+}
+
+.auth-card .form-group {
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.auth-card label {
+    font-size: 0.97rem;
+    color: var(--color-text-muted);
+    margin-bottom: 0.25rem;
+    display: block;
+}
+
+.auth-card input[type="text"],
+.auth-card input[type="password"] {
+    width: 100%;
+    padding: 0.65rem 0.9rem;
+    border-radius: var(--radius-md);
+    border: 1.2px solid var(--color-border);
+    background: #f8fafc;
+    font-size: 1rem;
+    margin-bottom: 0.2rem;
+    transition: border 0.2s;
+}
+.auth-card input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.auth-card button.btn {
+    width: 100%;
+    margin-top: 0.2rem;
+    font-size: 1.08rem;
+    padding: 0.7rem 0;
+}
+
+.auth-link {
+    width: 100%;
+    text-align: center;
+    margin-top: 0.5rem;
+    font-size: 0.97rem;
+}
+.auth-link a {
+    color: var(--color-primary-strong);
+    opacity: 0.92;
+    transition: color 0.2s, opacity 0.2s;
+}
+.auth-link a:hover {
+    color: var(--color-primary);
+    opacity: 1;
+}
+/* =============================================================
    Design System EsFAS 2.0 - Visual Moderno
    ============================================================= */
 
