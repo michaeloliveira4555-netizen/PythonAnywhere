@@ -13,9 +13,13 @@ from ..services.aluno_service import AlunoService
 from ..models.user import User
 from ..models.aluno import Aluno  # noqa: F401
 from ..models.turma import Turma
-from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required, can_view_management_pages_required  # noqa: F401
+from utils.decorators import (
+    school_admin_or_programmer_required,
+    can_view_management_pages_required,
+)
 
 aluno_bp = Blueprint('aluno', __name__, url_prefix='/aluno')
+
 
 class AlunoProfileForm(FlaskForm):
     foto_perfil = FileField('Foto de Perfil', validators=[FileAllowed(['jpg', 'png', 'jpeg'], 'Apenas imagens!')])
@@ -24,14 +28,17 @@ class AlunoProfileForm(FlaskForm):
     turma_id = SelectField('Turma / Pelotão', coerce=int, validators=[Optional()])
     submit = SubmitField('Salvar Perfil')
 
+
 class DeleteForm(FlaskForm):
     pass
+
 
 def _resolve_school_id_for_user(user: User):
     if user and getattr(user, 'user_schools', None):
         for us in user.user_schools:
             return us.school_id
     return None
+
 
 def _ensure_school_id_for_current_user(role_required: str = "aluno"):
     from ..models.school import School
@@ -52,13 +59,18 @@ def _ensure_school_id_for_current_user(role_required: str = "aluno"):
             from ..services.user_service import UserService
             ok, _ = UserService.assign_school_role(current_user.id, only_id, role_required)
             if not ok:
-                db.session.add(UserSchool(user_id=current_user.id, school_id=only_id, role=role_required))
+                db.session.add(
+                    UserSchool(user_id=current_user.id, school_id=only_id, role=role_required)
+                )
                 db.session.commit()
         return only_id
     return None
 
+
 class EditAlunoForm(FlaskForm):
-    foto_perfil = FileField('Alterar Foto de Perfil', validators=[FileAllowed(['jpg', 'png', 'jpeg'], 'Apenas imagens!')])
+    foto_perfil = FileField(
+        'Alterar Foto de Perfil', validators=[FileAllowed(['jpg', 'png', 'jpeg'], 'Apenas imagens!')]
+    )
     nome_completo = StringField('Nome Completo', validators=[DataRequired()])
     matricula = StringField('Matrícula', validators=[DataRequired()])
     opm = StringField('OPM', validators=[DataRequired()])
@@ -75,7 +87,6 @@ class EditAlunoForm(FlaskForm):
     ], validators=[Optional()])
     submit = SubmitField('Atualizar Perfil')
 
-# --- ROTA 'completar_cadastro' REMOVIDA DAQUI ---
 
 @aluno_bp.route('/listar')
 @login_required
@@ -91,7 +102,14 @@ def listar_alunos():
 
     alunos = AlunoService.get_all_alunos(current_user, turma_filtrada)
     turmas = db.session.scalars(select(Turma).where(Turma.school_id==school_id).order_by(Turma.nome)).all()
-    return render_template('listar_alunos.html', alunos=alunos, turmas=turmas, turma_filtrada=turma_filtrada, delete_form=delete_form)
+    return render_template(
+        'listar_alunos.html',
+        alunos=alunos,
+        turmas=turmas,
+        turma_filtrada=turma_filtrada,
+        delete_form=delete_form
+    )
+
 
 @aluno_bp.route('/editar/<int:aluno_id>', methods=['GET', 'POST'])
 @login_required

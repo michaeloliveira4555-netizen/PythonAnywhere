@@ -1,7 +1,7 @@
 # backend/controllers/disciplina_controller.py
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
-from flask_login import login_required, current_user
+from flask_login import login_required
 from sqlalchemy import select
 from flask_wtf import FlaskForm
 from wtforms import StringField, IntegerField, SubmitField, SelectField
@@ -10,12 +10,17 @@ from wtforms.validators import DataRequired, Length, NumberRange
 from ..models.database import db
 from ..models.disciplina import Disciplina
 from ..models.ciclo import Ciclo
-from ..models.turma import Turma # --- NOVA IMPORTAÇÃO ---
+from ..models.turma import Turma
 from ..services.disciplina_service import DisciplinaService
 from ..services.user_service import UserService
-from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required, can_view_management_pages_required
+from utils.decorators import (
+    admin_or_programmer_required,
+    school_admin_or_programmer_required,
+    can_view_management_pages_required
+)
 
 disciplina_bp = Blueprint('disciplina', __name__, url_prefix='/disciplina')
+
 
 class DisciplinaForm(FlaskForm):
     materia = StringField('Matéria', validators=[DataRequired(), Length(min=3, max=100)])
@@ -23,8 +28,10 @@ class DisciplinaForm(FlaskForm):
     ciclo_id = SelectField('Ciclo', coerce=int, validators=[DataRequired()])
     submit = SubmitField('Salvar')
 
+
 class DeleteForm(FlaskForm):
     pass
+
 
 @disciplina_bp.route('/')
 @login_required
@@ -38,9 +45,10 @@ def listar_disciplinas():
     ciclo_selecionado_id = request.args.get('ciclo', session.get('ultimo_ciclo_disciplina', 1), type=int)
     session['ultimo_ciclo_disciplina'] = ciclo_selecionado_id
     
-    # --- LÓGICA DO FILTRO DE TURMA ADICIONADA ---
     turma_selecionada_nome = request.args.get('turma', None)
-    turmas_disponiveis = db.session.scalars(select(Turma).where(Turma.school_id == school_id).order_by(Turma.nome)).all()
+    turmas_disponiveis = db.session.scalars(
+        select(Turma).where(Turma.school_id == school_id).order_by(Turma.nome)
+    ).all()
 
     query = select(Disciplina).where(
         Disciplina.school_id == school_id,
@@ -51,7 +59,6 @@ def listar_disciplinas():
     
     disciplinas_com_progresso = []
     for d in disciplinas:
-        # Passa a turma selecionada para o cálculo de progresso
         progresso = DisciplinaService.get_dados_progresso(d, turma_selecionada_nome)
         disciplinas_com_progresso.append({
             'disciplina': d,
@@ -66,8 +73,9 @@ def listar_disciplinas():
                            delete_form=delete_form, 
                            ciclo_selecionado=ciclo_selecionado_id,
                            ciclos=ciclos_disponiveis,
-                           turmas=turmas_disponiveis, # Passa as turmas para o template
-                           turma_selecionada=turma_selecionada_nome) # Passa a turma selecionada
+                           turmas=turmas_disponiveis,
+                           turma_selecionada=turma_selecionada_nome)
+
 
 @disciplina_bp.route('/adicionar', methods=['GET', 'POST'])
 @login_required
@@ -115,6 +123,7 @@ def editar_disciplina(disciplina_id):
 
     return render_template('editar_disciplina.html', form=form, disciplina=disciplina)
 
+
 @disciplina_bp.route('/excluir/<int:disciplina_id>', methods=['POST'])
 @login_required
 @school_admin_or_programmer_required
@@ -127,6 +136,7 @@ def excluir_disciplina(disciplina_id):
         flash('Falha na validação do token CSRF.', 'danger')
 
     return redirect(url_for('disciplina.listar_disciplinas'))
+
 
 @disciplina_bp.route('/gerenciar-por-ciclo')
 @login_required
@@ -143,6 +153,7 @@ def gerenciar_por_ciclo():
     return render_template('gerenciar_disciplinas_por_ciclo.html', 
                            disciplinas_agrupadas=disciplinas_agrupadas,
                            delete_form=delete_form)
+
 
 @disciplina_bp.route('/api/por-ciclo/<int:ciclo_id>')
 @login_required

@@ -4,20 +4,23 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from sqlalchemy import select
-from wtforms import StringField, TextAreaField, DateTimeLocalField, SubmitField, SelectField
+from wtforms import TextAreaField, DateTimeLocalField, SubmitField, SelectField
 from wtforms.validators import DataRequired
 
 from ..models.database import db
 from ..models.historico_disciplina import HistoricoDisciplina
 from ..models.disciplina import Disciplina
-from ..models.turma import Turma
 from ..services.historico_service import HistoricoService
 from ..services.aluno_service import AlunoService
-from utils.decorators import admin_or_programmer_required, aluno_profile_required, can_view_management_pages_required
+from utils.decorators import (
+    admin_or_programmer_required,
+    aluno_profile_required,
+    can_view_management_pages_required
+)
 
 historico_bp = Blueprint('historico', __name__, url_prefix='/historico')
 
-# Formulário para adicionar/editar atividades
+
 class AtividadeForm(FlaskForm):
     tipo = SelectField('Tipo de Atividade', choices=[
         ('Elogio', 'Elogio'),
@@ -30,16 +33,18 @@ class AtividadeForm(FlaskForm):
     data_inicio = DateTimeLocalField('Data e Hora do Evento', format='%Y-%m-%dT%H:%M', validators=[DataRequired()])
     submit = SubmitField('Salvar Atividade')
 
-class DeleteForm(FlaskForm):
-    pass # Apenas para o token CSRF
 
-# --- NOVAS ROTAS ADICIONADAS ---
+class DeleteForm(FlaskForm):
+    pass
+
+
 @historico_bp.route('/')
 @login_required
 @aluno_profile_required
 def index():
     """Página principal de seleção do 'Meu CTSP'."""
     return render_template('meu_ctsp_index.html')
+
 
 @historico_bp.route('/sancoes')
 @login_required
@@ -48,6 +53,7 @@ def sancoes():
     """Página para visualizar sanções (placeholder)."""
     return render_template('sancoes.html')
 
+
 @historico_bp.route('/elogios')
 @login_required
 @aluno_profile_required
@@ -55,13 +61,14 @@ def elogios():
     """Página para visualizar elogios (placeholder)."""
     return render_template('elogios.html')
 
+
 @historico_bp.route('/funcional')
 @login_required
 @aluno_profile_required
 def historico_funcional():
     """Página para visualizar o histórico funcional (placeholder)."""
     return render_template('historico_funcional.html')
-# --- FIM DAS NOVAS ROTAS ---
+
 
 @historico_bp.route('/minhas-notas')
 @login_required
@@ -73,11 +80,12 @@ def minhas_notas():
         flash("Aluno não encontrado.", 'danger')
         return redirect(url_for('main.dashboard'))
 
-    # Lógica de verificação e matrícula automática
     if aluno.turma and aluno.turma.school:
         school_id = aluno.turma.school.id
         disciplinas_da_escola = db.session.scalars(select(Disciplina).where(Disciplina.school_id == school_id)).all()
-        matriculas_existentes = db.session.scalars(select(HistoricoDisciplina.disciplina_id).where(HistoricoDisciplina.aluno_id == aluno_id)).all()
+        matriculas_existentes = db.session.scalars(
+            select(HistoricoDisciplina.disciplina_id).where(HistoricoDisciplina.aluno_id == aluno_id)
+        ).all()
         for disciplina in disciplinas_da_escola:
             if disciplina.id not in matriculas_existentes:
                 nova_matricula = HistoricoDisciplina(aluno_id=aluno.id, disciplina_id=disciplina.id)
@@ -94,12 +102,11 @@ def minhas_notas():
                            media_final_curso=media_final_curso,
                            is_own_profile=True)
 
-# --- NOVA ROTA PARA VISUALIZAÇÃO POR ADMINS ---
+
 @historico_bp.route('/ver/<int:aluno_id>')
 @login_required
 @can_view_management_pages_required
 def ver_historico_aluno(aluno_id):
-    # Apenas admins podem ver o histórico de outros
     if current_user.role not in ['super_admin', 'programador', 'admin_escola']:
         flash("Você não tem permissão para visualizar este histórico.", 'danger')
         return redirect(url_for('main.dashboard'))
@@ -117,7 +124,7 @@ def ver_historico_aluno(aluno_id):
                            aluno=aluno,
                            historico_disciplinas=historico_disciplinas,
                            media_final_curso=media_final_curso,
-                           is_own_profile=False) # Flag para o template saber que não é o perfil próprio
+                           is_own_profile=False)
 
 
 @historico_bp.route('/avaliar/<int:historico_id>', methods=['POST'])
@@ -143,10 +150,8 @@ def avaliar_aluno_disciplina(historico_id):
     else:
         flash(message, 'danger')
 
-    # Se a edição foi feita por um admin, retorna para a página de visualização do aluno
     if is_admin:
         return redirect(url_for('historico.ver_historico_aluno', aluno_id=aluno_id))
-    # Se foi o próprio aluno, retorna para a página de 'minhas notas'
     return redirect(url_for('historico.minhas_notas'))
 
 
@@ -162,6 +167,7 @@ def adicionar_atividade(aluno_id):
         flash('Erro de validação no formulário.', 'danger')
     return redirect(url_for('historico.ver_historico_aluno', aluno_id=aluno_id))
 
+
 @historico_bp.route('/atividade/editar/<int:atividade_id>', methods=['POST'])
 @login_required
 @admin_or_programmer_required
@@ -174,6 +180,7 @@ def editar_atividade(atividade_id):
     else:
         flash('Erro de validação no formulário.', 'danger')
     return redirect(url_for('historico.ver_historico_aluno', aluno_id=aluno_id))
+
 
 @historico_bp.route('/atividade/deletar/<int:atividade_id>', methods=['POST'])
 @login_required

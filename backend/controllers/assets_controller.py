@@ -4,11 +4,16 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
 from ..models.database import db
-from ..models.image_asset import ImageAsset
+from ..models.image_asset import ImageAsset  # noqa: F401
 from utils.decorators import programmer_required
-from utils.image_utils import allowed_file, generate_unique_filename, optimize_image, get_file_hash  # noqa: F401
+from utils.image_utils import (
+    allowed_file,
+    generate_unique_filename,
+    optimize_image,
+)
 
 assets_bp = Blueprint('assets', __name__, url_prefix='/assets')
+
 
 @assets_bp.route('/manage')
 @login_required
@@ -17,6 +22,7 @@ def manage_assets():
     """Página principal de gerenciamento de assets"""
     assets = db.session.query(ImageAsset).order_by(ImageAsset.created_at.desc()).all()
     return render_template('manage_assets.html', assets=assets)
+
 
 @assets_bp.route('/upload', methods=['GET', 'POST'])
 @login_required
@@ -86,6 +92,7 @@ def upload_asset():
     
     return render_template('upload_asset.html')
 
+
 @assets_bp.route('/delete/<int:asset_id>', methods=['POST'])
 @login_required
 @programmer_required
@@ -113,6 +120,7 @@ def delete_asset(asset_id):
     
     return redirect(url_for('assets.manage_assets'))
 
+
 @assets_bp.route('/toggle/<int:asset_id>', methods=['POST'])
 @login_required
 @programmer_required
@@ -131,6 +139,7 @@ def toggle_asset(asset_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Erro: {str(e)}'})
+
 
 @assets_bp.route('/api/list/<asset_type>')
 @login_required

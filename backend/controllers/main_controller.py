@@ -2,7 +2,6 @@
 
 from flask import Blueprint, render_template, redirect, url_for, request, flash, session
 from flask_login import login_required, current_user
-from ..models.user import User
 from ..models.school import School
 from ..models.database import db
 from ..services.dashboard_service import DashboardService
@@ -11,11 +10,13 @@ from ..services.user_service import UserService
 
 main_bp = Blueprint('main', __name__)
 
+
 @main_bp.route('/')
 def index():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
     return redirect(url_for('auth.login'))
+
 
 @main_bp.route('/dashboard')
 @login_required
@@ -51,6 +52,7 @@ def dashboard():
                            dashboard_data=dashboard_data, 
                            school_in_context=school_in_context)
 
+
 @main_bp.route('/pre-cadastro', methods=['GET', 'POST'])
 @login_required
 @admin_or_programmer_required
@@ -75,14 +77,20 @@ def pre_cadastro():
 
         matriculas_raw = form_data.get('matriculas', '').strip()
         if any(sep in matriculas_raw for sep in ('/', ' ', ',', ';')):
-            partes = [p.strip() for p in matriculas_raw.replace(',', ' ').replace(';', ' ').split() if p.strip()]
+            partes = [
+                p.strip() for p in matriculas_raw.replace(',', ' ').replace(';', ' ').split() if p.strip()
+            ]
             matriculas = [p for p in partes if p.isdigit()]
 
             if not form_data.get('role'):
                 flash('Função não informada para pré-cadastro em lote.', 'danger')
-                return redirect(url_for('main.pre_cadastro', role=role_arg) if role_arg else url_for('main.pre_cadastro'))
+                return redirect(
+                    url_for('main.pre_cadastro', role=role_arg) if role_arg else url_for('main.pre_cadastro')
+                )
 
-            success, novos, existentes = UserService.batch_pre_register_users(matriculas, form_data['role'], school_id)
+            success, novos, existentes = UserService.batch_pre_register_users(
+                matriculas, form_data['role'], school_id
+            )
             if success:
                 flash(f'Pré-cadastro realizado: {novos} novo(s), {existentes} já existente(s).', 'success')
             else:

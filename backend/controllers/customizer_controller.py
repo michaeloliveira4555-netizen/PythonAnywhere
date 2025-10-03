@@ -10,18 +10,17 @@ from ..services.asset_service import AssetService
 
 customizer_bp = Blueprint('customizer', __name__, url_prefix='/customizer')
 
+
 @customizer_bp.route('/')
 @login_required
 @programmer_required
 def index():
     """Painel principal de customização"""
-    # Inicializa configurações padrão se não existirem
     SiteConfigService.init_default_configs()
     
     configs = SiteConfigService.get_all_configs()
     assets = AssetService.get_all_assets()
     
-    # Organiza configs por categoria
     configs_by_category = {}
     for config in configs:
         if config.category not in configs_by_category:
@@ -31,6 +30,7 @@ def index():
     return render_template('customizer/index.html', 
                          configs_by_category=configs_by_category, 
                          assets=assets)
+
 
 @customizer_bp.route('/update', methods=['POST'])
 @login_required
@@ -58,6 +58,7 @@ def update_config():
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Erro: {str(e)}'})
 
+
 @customizer_bp.route('/preview')
 @login_required
 @programmer_required
@@ -67,6 +68,7 @@ def preview():
     config_dict = {config.config_key: config.config_value for config in configs}
     
     return render_template('customizer/preview.html', configs=config_dict)
+
 
 @customizer_bp.route('/reset', methods=['POST'])
 @login_required

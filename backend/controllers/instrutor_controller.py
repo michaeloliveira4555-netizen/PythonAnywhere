@@ -6,7 +6,7 @@ from flask_login import current_user, login_required
 from flask_wtf import FlaskForm
 from sqlalchemy import select
 from wtforms import BooleanField, PasswordField, SelectField, StringField, SubmitField
-from wtforms.validators import DataRequired, Email, EqualTo, Length, Optional
+from wtforms.validators import DataRequired, Email, Length, Optional
 
 from backend.models.database import db
 from backend.models.instrutor import Instrutor

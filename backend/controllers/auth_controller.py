@@ -5,8 +5,7 @@ from flask_wtf import FlaskForm
 from sqlalchemy import select
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired
-from backend.extensions import limiter
-from functools import wraps  # noqa: F401
+from backend.extensions import limiter  # noqa: F401
 
 from ..models.database import db
 from ..models.user import User
@@ -85,7 +84,9 @@ def register():
         ).scalar_one_or_none()
 
         if not user:
-            flash('Matrícula não encontrada para a função selecionada. Contate a administração.', 'danger')
+            flash(
+                'Matrícula não encontrada para a função selecionada. Contate a administração.', 'danger'
+            )
             return render_template('register.html', form_data=request.form)
 
         if user.is_active:
@@ -120,7 +121,9 @@ def register():
             user_school_link = db.session.scalar(select(UserSchool).where(UserSchool.user_id == user.id))
             if user_school_link:
                 school_id = user_school_link.school_id
-                disciplinas_da_escola = db.session.scalars(select(Disciplina).where(Disciplina.school_id == school_id)).all()
+                disciplinas_da_escola = db.session.scalars(
+                    select(Disciplina).where(Disciplina.school_id == school_id)
+                ).all()
                 for disciplina in disciplinas_da_escola:
                     nova_matricula = HistoricoDisciplina(aluno_id=new_aluno_profile.id, disciplina_id=disciplina.id)
                     db.session.add(nova_matricula)
@@ -153,7 +156,9 @@ def login():
                 return redirect(url_for('auth.force_change_password'))
             return redirect(url_for('main.dashboard'))
         elif user and not user.is_active:
-            flash('Sua conta precisa ser ativada. Use a página de registro para ativá-la.', 'warning')
+            flash(
+                'Sua conta precisa ser ativada. Use a página de registro para ativá-la.', 'warning'
+            )
         else:
             flash('Matrícula/Usuário ou senha inválidos.', 'danger')
 
@@ -169,7 +174,9 @@ def logout():
 
 
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
-@limiter.limit("4 per minute", methods=['POST'], error_message='Muitas solicitações de redefinição. Tente novamente mais tarde.')
+@limiter.limit(
+    "4 per minute", methods=['POST'], error_message='Muitas solicitações de redefinição. Tente novamente mais tarde.'
+)
 def forgot_password():
     if request.method == 'POST':
         matricula = (request.form.get('matricula') or '').strip()
