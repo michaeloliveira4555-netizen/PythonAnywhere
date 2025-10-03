@@ -123,9 +123,13 @@ def main():
     while i < len(args):
         a = args[i]
         if a == "--email" and i + 1 < len(args):
-            email = args[i + 1]; i += 2; continue
+            email = args[i + 1]
+            i += 2
+            continue
         if a == "--matricula" and i + 1 < len(args):
-            matricula = args[i + 1]; i += 2; continue
+            matricula = args[i + 1]
+            i += 2
+            continue
         i += 1
 
     email_n = norm_email(email) if email else None
@@ -150,8 +154,10 @@ def main():
         sys.exit(2)
 
     print("=== SCAN GERAL NO BANCO ===")
-    if email_n:  print(f"- Procurando email (case-insensitive, LIKE): {email_n}")
-    if matricula_n: print(f"- Procurando matricula (dígitos), LIKE: {matricula_n}")
+    if email_n:
+        print(f"- Procurando email (case-insensitive, LIKE): {email_n}")
+    if matricula_n:
+        print(f"- Procurando matricula (dígitos), LIKE: {matricula_n}")
     print("")
 
     # pré-classifica tipos textuais

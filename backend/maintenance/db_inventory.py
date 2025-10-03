@@ -43,12 +43,18 @@ def main():
     email = None
     matricula = None
     args = sys.argv[1:]
-    i=0
+    i = 0
     while i < len(args):
         a = args[i]
-        if a == "--email" and i+1 < len(args): email = args[i+1]; i+=2; continue
-        if a == "--matricula" and i+1 < len(args): matricula = args[i+1]; i+=2; continue
-        i+=1
+        if a == "--email" and i + 1 < len(args):
+            email = args[i + 1]
+            i += 2
+            continue
+        if a == "--matricula" and i + 1 < len(args):
+            matricula = args[i + 1]
+            i += 2
+            continue
+        i += 1
 
     email_n = norm_email(email) if email else None
     matricula_n = norm_matricula(matricula) if matricula else None
@@ -56,7 +62,8 @@ def main():
     app = build_app()
     with app.app_context():
         uri = app.config.get("SQLALCHEMY_DATABASE_URI")
-        if not uri: raise RuntimeError("SQLALCHEMY_DATABASE_URI não encontrada.")
+        if not uri:
+            raise RuntimeError("SQLALCHEMY_DATABASE_URI não encontrada.")
         print(f"DB URI: {uri}")
 
     engine = create_engine(uri)

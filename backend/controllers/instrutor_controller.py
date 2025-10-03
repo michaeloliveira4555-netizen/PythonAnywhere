@@ -85,28 +85,6 @@ def _ensure_school_id_for_current_user() -> TypingOptional[int]:
     return school_ids[0] if len(school_ids) == 1 else None
 
 
-    nome_completo = payload.get('nome_completo') or ''
-    nome_de_guerra = payload.get('nome_de_guerra') or ''
-    matricula = payload.get('matricula') or ''
-    password = payload.get('password') or ''
-
-    if nome_completo:
-        user.nome_completo = nome_completo
-    if nome_de_guerra:
-        user.nome_de_guerra = nome_de_guerra
-    if matricula:
-        user.matricula = matricula
-    if password:
-        user.set_password(password)
-    user.username = user.username or user.matricula
-    user.role = user.role or 'instrutor'
-    if user.role != 'instrutor':
-        user.role = 'instrutor'
-    if hasattr(user, 'is_active'):
-        user.is_active = True
-
-
-
 @instrutor_bp.route('/')
 @login_required
 @can_view_management_pages_required

@@ -1,3 +1,32 @@
+# Ignore local python envs and caches
+venv
+.venv
+__pycache__
+*.pyc
+*.pyo
+
+# Git and metadata
+.git
+.gitignore
+
+# Docker and build artifacts
+docker-compose.yml
+docker-compose.prod.yml
+Dockerfile.weasyprint
+Dockerfile.web
+
+# IDE/editor
+.vscode
+.idea
+
+# Secrets and env
+.env
+.flaskenv
+
+# Other
+certs
+node_modules
+tests
 venv/
 .venv/
 __pycache__/

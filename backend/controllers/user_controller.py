@@ -5,7 +5,7 @@ import os
 import re
 import secrets
 from datetime import datetime
-from typing import Optional
+from typing import Optional as TypingOptional
 
 from flask import (
     Blueprint,
@@ -20,7 +20,7 @@ from flask_login import current_user, login_required
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
-from werkzeug.utils import secure_filename
+# secure_filename não é usado neste módulo atualmente
 from flask_wtf import FlaskForm
 # --- SelectField ADICIONADO ---
 from wtforms import StringField, PasswordField, SubmitField, SelectField
@@ -259,21 +259,20 @@ def criar_admin_escola():
                 return redirect(url_for("user.lista_admins_escola"))
 
             user = User()
-            if hasattr(user, "id_func"): user.id_func = id_func
-            if hasattr(user, "username"): user.username = username
-            if hasattr(user, "email"): user.email = email
-            if hasattr(user, "nome_completo"): user.nome_completo = nome
-            if hasattr(user, "role"): user.role = "admin_escola"
-            if hasattr(user, "is_active"): user.is_active = True
-            if hasattr(user, "must_change_password"): user.must_change_password = True
-            user = User()
-            if hasattr(user, "id_func"): user.id_func = id_func
-            if hasattr(user, "username"): user.username = username
-            if hasattr(user, "email"): user.email = email
-            if hasattr(user, "nome_completo"): user.nome_completo = nome
-            if hasattr(user, "role"): user.role = "admin_escola"
-            if hasattr(user, "is_active"): user.is_active = True
-            if hasattr(user, "must_change_password"): user.must_change_password = True
+            if hasattr(user, "id_func"):
+                user.id_func = id_func
+            if hasattr(user, "username"):
+                user.username = username
+            if hasattr(user, "email"):
+                user.email = email
+            if hasattr(user, "nome_completo"):
+                user.nome_completo = nome
+            if hasattr(user, "role"):
+                user.role = "admin_escola"
+            if hasattr(user, "is_active"):
+                user.is_active = True
+            if hasattr(user, "must_change_password"):
+                user.must_change_password = True
 
             set_password_hash_on_user(user, temp_pass)
 

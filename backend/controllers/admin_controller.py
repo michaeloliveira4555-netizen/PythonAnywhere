@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 
 from backend.models.database import db
 from backend.models.school import School
-from backend.models.user import User
+from backend.models.user import User  # noqa: F401
 from utils.decorators import admin_or_programmer_required
 from ..services.user_service import UserService
 from ..services.password_reset_service import PasswordResetService

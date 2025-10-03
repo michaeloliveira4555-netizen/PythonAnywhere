@@ -5,6 +5,8 @@ from flask_wtf import FlaskForm
 from sqlalchemy import select
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired
+from backend.extensions import limiter
+from functools import wraps  # noqa: F401
 
 from ..models.database import db
 from ..models.user import User
@@ -132,6 +134,7 @@ def register():
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit("8 per minute", methods=['POST'], error_message='Muitas tentativas. Tente novamente mais tarde.')
 def login():
     form = LoginForm()
     if form.validate_on_submit():
@@ -166,6 +169,7 @@ def logout():
 
 
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+@limiter.limit("4 per minute", methods=['POST'], error_message='Muitas solicitações de redefinição. Tente novamente mais tarde.')
 def forgot_password():
     if request.method == 'POST':
         matricula = (request.form.get('matricula') or '').strip()

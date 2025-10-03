@@ -65,7 +65,8 @@ class HorarioService:
                     else:
                         duracao_bloco = periodos_restantes
                     
-                    if duracao_bloco <= 0: break 
+                    if duracao_bloco <= 0:
+                        break
 
                     can_see_details = HorarioService.can_edit_horario(aula, user)
                     instrutor_nome = "N/D"
@@ -248,11 +249,21 @@ class HorarioService:
 
         if horario_id:
             aula = db.session.get(Horario, int(horario_id))
-            if not aula: return False, 'Aula não encontrada.', 404
-            if not HorarioService.can_edit_horario(aula, user): return False, 'Sem permissão para editar esta aula.', 403
+            if not aula:
+                return False, 'Aula não encontrada.', 404
+            if not HorarioService.can_edit_horario(aula, user):
+                return False, 'Sem permissão para editar esta aula.', 403
         else:
-            conflito = db.session.execute(select(Horario).where(Horario.pelotao == pelotao, Horario.semana_id == semana_id, Horario.dia_semana == dia, Horario.periodo == periodo)).scalar_one_or_none()
-            if conflito: return False, 'Já existe uma aula neste horário.', 409
+            conflito = db.session.execute(
+                select(Horario).where(
+                    Horario.pelotao == pelotao,
+                    Horario.semana_id == semana_id,
+                    Horario.dia_semana == dia,
+                    Horario.periodo == periodo,
+                )
+            ).scalar_one_or_none()
+            if conflito:
+                return False, 'Já existe uma aula neste horário.', 409
             aula = Horario(status='confirmado' if is_admin else 'pendente')
             db.session.add(aula)
         
@@ -272,8 +283,10 @@ class HorarioService:
     def remove_aula(horario_id, user):
         # ... (código existente sem alterações)
         aula = db.session.get(Horario, int(horario_id))
-        if not aula: return False, 'Aula não encontrada.'
-        if not HorarioService.can_edit_horario(aula, user): return False, 'Sem permissão para remover esta aula.'
+        if not aula:
+            return False, 'Aula não encontrada.'
+        if not HorarioService.can_edit_horario(aula, user):
+            return False, 'Sem permissão para remover esta aula.'
         
         db.session.delete(aula)
         db.session.commit()
@@ -294,7 +307,8 @@ class HorarioService:
     def aprovar_horario(horario_id, action):
         # ... (código existente sem alterações)
         aula = db.session.get(Horario, int(horario_id))
-        if not aula: return False, 'Aula não encontrada.'
+        if not aula:
+            return False, 'Aula não encontrada.'
 
         if action == 'aprovar':
             aula.status = 'confirmado'

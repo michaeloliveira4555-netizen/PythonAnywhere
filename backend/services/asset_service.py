@@ -6,6 +6,7 @@ from sqlalchemy import select
 from ..models.database import db
 from ..models.image_asset import ImageAsset
 from utils.image_utils import allowed_file, generate_unique_filename, optimize_image
+from flask import url_for
 
 class AssetService:
     ALLOWED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp']

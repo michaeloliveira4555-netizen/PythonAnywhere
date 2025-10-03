@@ -11,9 +11,9 @@ from wtforms.validators import DataRequired, Optional
 from ..models.database import db
 from ..services.aluno_service import AlunoService
 from ..models.user import User
-from ..models.aluno import Aluno
+from ..models.aluno import Aluno  # noqa: F401
 from ..models.turma import Turma
-from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required, can_view_management_pages_required
+from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required, can_view_management_pages_required  # noqa: F401
 
 aluno_bp = Blueprint('aluno', __name__, url_prefix='/aluno')
 

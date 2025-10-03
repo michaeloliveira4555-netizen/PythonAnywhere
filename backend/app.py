@@ -1,8 +1,9 @@
 # backend/app.py
+# flake8: noqa
 
 import os
 from importlib import import_module
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect
 import click
 from flask_login import LoginManager
 from flask_migrate import Migrate
@@ -14,21 +15,21 @@ from backend.config import Config
 from backend.models.database import db
 from backend.models.user import User
 # Importações de todos os modelos para que o Flask-Migrate os reconheça
-from backend.models.aluno import Aluno
-from backend.models.disciplina import Disciplina
-from backend.models.disciplina_turma import DisciplinaTurma
-from backend.models.historico import HistoricoAluno
-from backend.models.historico_disciplina import HistoricoDisciplina
-from backend.models.horario import Horario
-from backend.models.image_asset import ImageAsset
-from backend.models.instrutor import Instrutor
-from backend.models.password_reset_token import PasswordResetToken
-from backend.models.school import School
-from backend.models.semana import Semana
-from backend.models.site_config import SiteConfig
-from backend.models.turma import Turma
-from backend.models.turma_cargo import TurmaCargo
-from backend.models.user_school import UserSchool
+from backend.models.aluno import Aluno  # noqa: F401
+from backend.models.disciplina import Disciplina  # noqa: F401
+from backend.models.disciplina_turma import DisciplinaTurma  # noqa: F401
+from backend.models.historico import HistoricoAluno  # noqa: F401
+from backend.models.historico_disciplina import HistoricoDisciplina  # noqa: F401
+from backend.models.horario import Horario  # noqa: F401
+from backend.models.image_asset import ImageAsset  # noqa: F401
+from backend.models.instrutor import Instrutor  # noqa: F401
+from backend.models.password_reset_token import PasswordResetToken  # noqa: F401
+from backend.models.school import School  # noqa: F401
+from backend.models.semana import Semana  # noqa: F401
+from backend.models.site_config import SiteConfig  # noqa: F401
+from backend.models.turma import Turma  # noqa: F401
+from backend.models.turma_cargo import TurmaCargo  # noqa: F401
+from backend.models.user_school import UserSchool  # noqa: F401
 from backend.services.asset_service import AssetService
 # IMPORTAÇÃO DOS NOVOS MODELOS DE QUESTIONÁRIO
 from backend.models.questionario import Questionario
@@ -48,6 +49,20 @@ def create_app(config_class=Config):
     app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
     app.config.from_object(config_class)
 
+    # Gerar nonce por request para uso no CSP
+    @app.before_request
+    def _set_csp_nonce():
+        # Gera um nonce curto para uso em CSP quando necessário
+        try:
+            from secrets import token_urlsafe
+            nonce = token_urlsafe(16)
+        except Exception:
+            # fallback simples
+            import os
+            nonce = os.urandom(12).hex()
+        # Armazena no request (atributo dinâmico) para uso nos templates
+        setattr(request, 'csp_nonce', nonce)
+
     # Executa a verificação da config (importante para produção)
     config_class.init_app(app)
 
@@ -57,6 +72,21 @@ def create_app(config_class=Config):
     CSRFProtect(app)
     limiter.init_app(app)
     Babel(app)
+
+    # Forçar HTTPS em produção se configurado
+    try:
+        from flask_talisman import Talisman
+        _talisman = Talisman(
+            app,
+            force_https=bool(os.environ.get('FORCE_HTTPS', 'False') == 'True'),
+        )
+    except Exception:
+        # Se flask-talisman não estiver instalado, aplicamos um redirect simples
+        @app.before_request
+        def _force_https_redirect():
+            if os.environ.get('FORCE_HTTPS', 'False') == 'True' and not request.is_secure:
+                url = request.url.replace('http://', 'https://', 1)
+                return redirect(url, code=301)
 
     login_manager = LoginManager()
     login_manager.login_view = 'auth.login'
@@ -75,43 +105,61 @@ def create_app(config_class=Config):
     register_cli_commands(app)
     return app
 
-def register_blueprints(app):
-    """Importa e registra os blueprints na aplicação."""
-
-    def _register(module_path: str, blueprint_name: str) -> None:
-        module = import_module(module_path)
-        blueprint = getattr(module, blueprint_name, None)
-        if blueprint is None:
-            app.logger.warning(
-                "Blueprint '%s' não encontrado no módulo '%s'. Registro ignorado.",
-                blueprint_name,
-                module_path,
-            )
-            return
-        app.register_blueprint(blueprint)
-
-    for module_path, blueprint_name in [
-        ('backend.controllers.auth_controller', 'auth_bp'),
-        ('backend.controllers.aluno_controller', 'aluno_bp'),
-        ('backend.controllers.instrutor_controller', 'instrutor_bp'),
-        ('backend.controllers.disciplina_controller', 'disciplina_bp'),
-        ('backend.controllers.historico_controller', 'historico_bp'),
-        ('backend.controllers.main_controller', 'main_bp'),
-        ('backend.controllers.assets_controller', 'assets_bp'),
-        ('backend.controllers.customizer_controller', 'customizer_bp'),
-        ('backend.controllers.horario_controller', 'horario_bp'),
-        ('backend.controllers.semana_controller', 'semana_bp'),
-        ('backend.controllers.turma_controller', 'turma_bp'),
-        ('backend.controllers.vinculo_controller', 'vinculo_bp'),
-        ('backend.controllers.user_controller', 'user_bp'),
-        ('backend.controllers.relatorios_controller', 'relatorios_bp'),
-        ('backend.controllers.super_admin_controller', 'super_admin_bp'),
-        ('backend.controllers.admin_controller', 'admin_escola_bp'),
-        ('backend.controllers.questionario_controller', 'questionario_bp'),
-    ]:
-        _register(module_path, blueprint_name)
-
+def register_blueprints(app):
+
+
+    """Importa e registra os blueprints na aplicação."""
+
+
+
+    def _register(module_path: str, blueprint_name: str) -> None:
+
+        module = import_module(module_path)
+
+        blueprint = getattr(module, blueprint_name, None)
+
+        if blueprint is None:
+
+            app.logger.warning(
+
+                "Blueprint '%s' não encontrado no módulo '%s'. Registro ignorado.",
+
+                blueprint_name,
+
+                module_path,
+
+            )
+
+            return
+
+        app.register_blueprint(blueprint)
+
+    for module_path, blueprint_name in [
+        ('backend.controllers.auth_controller', 'auth_bp'),
+        ('backend.controllers.aluno_controller', 'aluno_bp'),
+        ('backend.controllers.instrutor_controller', 'instrutor_bp'),
+        ('backend.controllers.disciplina_controller', 'disciplina_bp'),
+        ('backend.controllers.historico_controller', 'historico_bp'),
+        ('backend.controllers.main_controller', 'main_bp'),
+        ('backend.controllers.assets_controller', 'assets_bp'),
+        ('backend.controllers.customizer_controller', 'customizer_bp'),
+        ('backend.controllers.horario_controller', 'horario_bp'),
+        ('backend.controllers.semana_controller', 'semana_bp'),
+        ('backend.controllers.turma_controller', 'turma_bp'),
+        ('backend.controllers.vinculo_controller', 'vinculo_bp'),
+        ('backend.controllers.user_controller', 'user_bp'),
+        ('backend.controllers.relatorios_controller', 'relatorios_bp'),
+        ('backend.controllers.super_admin_controller', 'super_admin_bp'),
+        ('backend.controllers.admin_controller', 'admin_escola_bp'),
+        ('backend.controllers.questionario_controller', 'questionario_bp'),
+    ]:
+        _register(module_path, blueprint_name)
+
+
+
 def register_handlers_and_processors(app):
+
+
     """Registra hooks, context processors e error handlers."""
     @app.context_processor
     def inject_site_configs():
@@ -121,11 +169,39 @@ def register_handlers_and_processors(app):
         configs = SiteConfigService.get_all_configs()
         return dict(site_config={c.config_key: c.config_value for c in configs})
 
+    @app.context_processor
+    def inject_nonce():
+        # Disponibiliza nonce para uso direto nos templates: {{ csp_nonce }}
+        return dict(csp_nonce=getattr(request, 'csp_nonce', None))
+
     @app.after_request
     def add_header(response):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
+        # Cabeçalhos de segurança recomendados
+        # Evita clickjacking
+        response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        # Força detecção de tipo de conteúdo
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        # Política de referrer
+        response.headers.setdefault('Referrer-Policy', 'no-referrer-when-downgrade')
+        # HSTS (aplicar somente se estiver usando HTTPS em produção)
+        if request.is_secure:
+            response.headers.setdefault('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
+        # CSP mínimo — usamos nonce gerado por request e removemos 'unsafe-inline'
+        nonce = getattr(request, 'csp_nonce', None)
+        if nonce:
+            csp = (
+                "default-src 'self' https:; "
+                "script-src 'self' 'nonce-{}' https:; "
+                "img-src 'self' data: https:; "
+                "style-src 'self' 'nonce-{}' https:; "
+                "font-src 'self' https:;"
+            ).format(nonce, nonce)
+        else:
+            csp = "default-src 'self' https:; img-src 'self' data: https:; style-src 'self' https:; font-src 'self' https:;"
+        response.headers.setdefault('Content-Security-Policy', csp)
         return response
 
     @app.errorhandler(404)

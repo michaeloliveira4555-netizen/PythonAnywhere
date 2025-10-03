@@ -95,6 +95,11 @@
     color: var(--color-primary);
     opacity: 1;
 }
+.auth-link-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
 /* =============================================================
    Design System EsFAS 2.0 - Visual Moderno
    ============================================================= */

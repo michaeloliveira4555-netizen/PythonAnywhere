@@ -2,8 +2,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 
 from ..models.database import db
-from ..models.image_asset import ImageAsset
-from ..models.site_config import SiteConfig
+from ..models.image_asset import ImageAsset  # noqa: F401
+from ..models.site_config import SiteConfig  # noqa: F401
 from ..services.site_config_service import SiteConfigService
 from utils.decorators import programmer_required
 from ..services.asset_service import AssetService

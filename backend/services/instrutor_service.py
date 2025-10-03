@@ -85,13 +85,15 @@ class InstrutorService:
 
         except IntegrityError as e:
             db.session.rollback()
-            current_app.logger.error(f"Erro de Integridade Inesperado: {e.orig}")
+            # Log the original exception message if available
+            msg = getattr(e, 'orig', e)
+            current_app.logger.error("Erro de Integridade Inesperado: %s", msg)
             return False, "Erro de integridade da base de dados. Verifique os dados e tente novamente."
 
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception("Erro geral ao criar instrutor")
-            return False, f"Ocorreu um erro inesperado ao criar o instrutor."
+            return False, "Ocorreu um erro inesperado ao criar o instrutor."
 
     # --- FUNÇÃO NOVA ADICIONADA AQUI ---
     @staticmethod
@@ -154,8 +156,10 @@ class InstrutorService:
 
             user = db.session.get(User, instrutor.user_id)
             if user:
-                if nome_completo: user.nome_completo = nome_completo
-                if nome_de_guerra: user.nome_de_guerra = nome_de_guerra
+                if nome_completo:
+                    user.nome_completo = nome_completo
+                if nome_de_guerra:
+                    user.nome_de_guerra = nome_de_guerra
 
             instrutor.telefone = (telefone or None)
             instrutor.posto_graduacao = posto

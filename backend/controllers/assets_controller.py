@@ -6,7 +6,7 @@ from werkzeug.utils import secure_filename
 from ..models.database import db
 from ..models.image_asset import ImageAsset
 from utils.decorators import programmer_required
-from utils.image_utils import allowed_file, generate_unique_filename, optimize_image, get_file_hash
+from utils.image_utils import allowed_file, generate_unique_filename, optimize_image, get_file_hash  # noqa: F401
 
 assets_bp = Blueprint('assets', __name__, url_prefix='/assets')
 
