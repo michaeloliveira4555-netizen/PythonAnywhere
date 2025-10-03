@@ -26,7 +26,7 @@ def dashboard():
         session.pop('view_as_school_name', None)
 
     view_as_school_id = request.args.get('view_as_school', type=int)
-    
+
     if current_user.role in ['super_admin', 'programador'] and view_as_school_id:
         school = db.session.get(School, view_as_school_id)
         if school:
@@ -41,15 +41,15 @@ def dashboard():
         school_id_to_load = session.get('view_as_school_id')
     elif hasattr(current_user, 'schools') and current_user.schools:
         school_id_to_load = current_user.schools[0].id
-    
+
     dashboard_data = DashboardService.get_dashboard_data(school_id=school_id_to_load)
-    
+
     school_in_context = None
     if school_id_to_load:
         school_in_context = db.session.get(School, school_id_to_load)
 
-    return render_template('dashboard.html', 
-                           dashboard_data=dashboard_data, 
+    return render_template('dashboard.html',
+                           dashboard_data=dashboard_data,
                            school_in_context=school_in_context)
 
 

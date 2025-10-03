@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: pythonanywhere_web
+    env_file:
+      - .env
+    command: gunicorn -w 4 -b 0.0.0.0:8000 wsgi:app
+    volumes:
+      - ./:/app:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: pythonanywhere_redis
+    restart: always
+    volumes:
+      - redis-data:/data
+    expose:
+      - 6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: pythonanywhere_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: escola
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: pythonanywhere_nginx
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+      - ./static:/app/static:ro
+      - ./templates:/app/templates:ro
+    restart: always
+
+volumes:
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local

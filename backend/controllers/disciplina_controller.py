@@ -41,10 +41,10 @@ def listar_disciplinas():
     if not school_id:
         flash('Nenhuma escola associada ou selecionada.', 'warning')
         return redirect(url_for('main.dashboard'))
-        
+
     ciclo_selecionado_id = request.args.get('ciclo', session.get('ultimo_ciclo_disciplina', 1), type=int)
     session['ultimo_ciclo_disciplina'] = ciclo_selecionado_id
-    
+
     turma_selecionada_nome = request.args.get('turma', None)
     turmas_disponiveis = db.session.scalars(
         select(Turma).where(Turma.school_id == school_id).order_by(Turma.nome)
@@ -56,7 +56,7 @@ def listar_disciplinas():
     ).order_by(Disciplina.materia)
 
     disciplinas = db.session.scalars(query).all()
-    
+
     disciplinas_com_progresso = []
     for d in disciplinas:
         progresso = DisciplinaService.get_dados_progresso(d, turma_selecionada_nome)
@@ -68,9 +68,9 @@ def listar_disciplinas():
     delete_form = DeleteForm()
     ciclos_disponiveis = db.session.scalars(select(Ciclo).order_by(Ciclo.id)).all()
 
-    return render_template('listar_disciplinas.html', 
-                           disciplinas_com_progresso=disciplinas_com_progresso, 
-                           delete_form=delete_form, 
+    return render_template('listar_disciplinas.html',
+                           disciplinas_com_progresso=disciplinas_com_progresso,
+                           delete_form=delete_form,
                            ciclo_selecionado=ciclo_selecionado_id,
                            ciclos=ciclos_disponiveis,
                            turmas=turmas_disponiveis,
@@ -85,11 +85,11 @@ def adicionar_disciplina():
     if not school_id:
         flash('Nenhuma escola associada ou selecionada.', 'danger')
         return redirect(url_for('disciplina.listar_disciplinas'))
-        
+
     form = DisciplinaForm()
     ciclos = db.session.scalars(select(Ciclo).order_by(Ciclo.nome)).all()
     form.ciclo_id.choices = [(c.id, c.nome) for c in ciclos]
-    
+
     if form.validate_on_submit():
         success, message = DisciplinaService.create_disciplina(form.data, school_id)
         flash(message, 'success' if success else 'danger')
@@ -115,7 +115,7 @@ def editar_disciplina(disciplina_id):
     form = DisciplinaForm(obj=disciplina)
     ciclos = db.session.scalars(select(Ciclo).order_by(Ciclo.nome)).all()
     form.ciclo_id.choices = [(c.id, c.nome) for c in ciclos]
-    
+
     if form.validate_on_submit():
         success, message = DisciplinaService.update_disciplina(disciplina_id, form.data)
         flash(message, 'success' if success else 'danger')
@@ -146,11 +146,11 @@ def gerenciar_por_ciclo():
     if not school_id:
         flash('Nenhuma escola associada ou selecionada.', 'warning')
         return redirect(url_for('main.dashboard'))
-        
+
     disciplinas_agrupadas = DisciplinaService.get_disciplinas_agrupadas_por_ciclo(school_id)
     delete_form = DeleteForm()
-    
-    return render_template('gerenciar_disciplinas_por_ciclo.html', 
+
+    return render_template('gerenciar_disciplinas_por_ciclo.html',
                            disciplinas_agrupadas=disciplinas_agrupadas,
                            delete_form=delete_form)
 
@@ -168,5 +168,5 @@ def api_disciplinas_por_ciclo(ciclo_id):
         .order_by(Disciplina.materia)
     )
     disciplinas = db.session.scalars(disciplinas_query).all()
-    
+
     return jsonify([{'id': d.id, 'materia': d.materia} for d in disciplinas])

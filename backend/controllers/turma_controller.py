@@ -77,10 +77,10 @@ def detalhes_turma(turma_id):
     if not turma:
         flash('Turma não encontrada.', 'danger')
         return redirect(url_for('turma.listar_turmas'))
-    
+
     cargos_atuais = TurmaService.get_cargos_da_turma(turma_id, CARGOS_LISTA)
     form = TurmaCargoForm()
-    
+
     return render_template('detalhes_turma.html', turma=turma, cargos_lista=CARGOS_LISTA,
                            cargos_atuais=cargos_atuais, form=form)
 
@@ -103,7 +103,7 @@ def salvar_cargos_turma(turma_id):
 @school_admin_or_programmer_required
 def cadastrar_turma():
     form = TurmaForm()
-    
+
     school_id = UserService.get_current_school_id()
     if not school_id:
         flash('Não foi possível identificar a escola. Por favor, contate o suporte.', 'danger')
@@ -122,7 +122,7 @@ def cadastrar_turma():
         flash(message, 'success' if success else 'danger')
         if success:
             return redirect(url_for('turma.listar_turmas'))
-    
+
     return render_template('cadastrar_turma.html', form=form, alunos_sem_turma=alunos_sem_turma)
 
 
@@ -134,13 +134,13 @@ def editar_turma(turma_id):
     if not turma:
         flash('Turma não encontrada.', 'danger')
         return redirect(url_for('turma.listar_turmas'))
-    
+
     form = TurmaForm(obj=turma)
     alunos_disponiveis = db.session.scalars(
         select(Aluno).where(or_(Aluno.turma_id.is_(None), Aluno.turma_id == turma_id))
     ).all()
     form.alunos_ids.choices = [(a.id, a.user.nome_completo) for a in alunos_disponiveis]
-    
+
     if form.validate_on_submit():
         success, message = TurmaService.update_turma(turma_id, form.data)
         flash(message, 'success' if success else 'danger')

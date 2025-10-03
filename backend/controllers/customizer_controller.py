@@ -17,18 +17,18 @@ customizer_bp = Blueprint('customizer', __name__, url_prefix='/customizer')
 def index():
     """Painel principal de customização"""
     SiteConfigService.init_default_configs()
-    
+
     configs = SiteConfigService.get_all_configs()
     assets = AssetService.get_all_assets()
-    
+
     configs_by_category = {}
     for config in configs:
         if config.category not in configs_by_category:
             configs_by_category[config.category] = []
         configs_by_category[config.category].append(config)
-    
-    return render_template('customizer/index.html', 
-                         configs_by_category=configs_by_category, 
+
+    return render_template('customizer/index.html',
+                         configs_by_category=configs_by_category,
                          assets=assets)
 
 
@@ -40,10 +40,10 @@ def update_config():
     config_key = request.form.get('config_key')
     config_value = request.form.get('config_value')
     config_type = request.form.get('config_type', 'text')
-    
+
     if not config_key:
         return jsonify({'success': False, 'message': 'Chave de configuração não fornecida'})
-    
+
     try:
         SiteConfigService.set_config(
             key=config_key,
@@ -52,7 +52,7 @@ def update_config():
             updated_by=current_user.id
         )
         db.session.commit()
-        
+
         return jsonify({'success': True, 'message': 'Configuração atualizada com sucesso!'})
     except Exception as e:
         db.session.rollback()
@@ -66,7 +66,7 @@ def preview():
     """Preview das configurações"""
     configs = SiteConfigService.get_all_configs()
     config_dict = {config.config_key: config.config_value for config in configs}
-    
+
     return render_template('customizer/preview.html', configs=config_dict)
 
 
@@ -78,10 +78,10 @@ def reset_configs():
     try:
         SiteConfigService.delete_all_configs()
         db.session.commit()
-        
+
         SiteConfigService.init_default_configs()
         db.session.commit()
-        
+
         flash('Configurações resetadas para o padrão!', 'success')
         return redirect(url_for('customizer.index'))
     except Exception as e:

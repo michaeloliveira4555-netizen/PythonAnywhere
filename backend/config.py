@@ -4,6 +4,7 @@ import os
 basedir = os.path.abspath(os.path.dirname(__file__))
 from datetime import timedelta
 
+
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'd2a1b9c8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0'
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///' + os.path.join(basedir, 'escola.db')

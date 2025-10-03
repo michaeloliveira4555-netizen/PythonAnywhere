@@ -14,7 +14,7 @@ from ..models.disciplina import Disciplina
 from ..models.disciplina_turma import DisciplinaTurma
 from ..models.user import User
 from ..models.ciclo import Ciclo
-from ..services.user_service import UserService 
+from ..services.user_service import UserService
 from ..services.vinculo_service import VinculoService
 from utils.decorators import admin_or_programmer_required, school_admin_or_programmer_required
 
@@ -35,20 +35,28 @@ class DeleteForm(FlaskForm):
 def gerenciar_vinculos():
     turma_filtrada = request.args.get('turma', '')
     disciplina_filtrada_id = request.args.get('disciplina_id', type=int)
-    
+
     school_id = UserService.get_current_school_id()
     if not school_id:
         flash("Nenhuma escola associada ou selecionada.", "warning")
         return redirect(url_for('main.dashboard'))
 
     vinculos = VinculoService.get_all_vinculos(turma_filtrada, disciplina_filtrada_id)
-    turmas = db.session.scalars(select(Turma).where(Turma.school_id == school_id).order_by(Turma.nome)).all()
-    disciplinas = db.session.scalars(select(Disciplina).where(Disciplina.school_id == school_id).order_by(Disciplina.materia)).all()
+    turmas = (
+        db.session.scalars(
+            select(Turma).where(Turma.school_id == school_id).order_by(Turma.nome)
+        ).all()
+    )
+    disciplinas = (
+        db.session.scalars(
+            select(Disciplina).where(Disciplina.school_id == school_id).order_by(Disciplina.materia)
+        ).all()
+    )
     delete_form = DeleteForm()
-    
-    return render_template('gerenciar_vinculos.html', 
-                           vinculos=vinculos, 
-                           turmas=turmas, 
+
+    return render_template('gerenciar_vinculos.html',
+                           vinculos=vinculos,
+                           turmas=turmas,
                            disciplinas=disciplinas,
                            turma_filtrada=turma_filtrada,
                            disciplina_filtrada_id=disciplina_filtrada_id,
@@ -60,15 +68,15 @@ def gerenciar_vinculos():
 def adicionar_vinculo():
     form = VinculoForm()
     school_id = UserService.get_current_school_id()
-    
+
     # Prepara as opções para os menus dropdown
     instrutores = db.session.scalars(select(Instrutor).join(User).order_by(User.nome_completo)).all()
     turmas = db.session.scalars(select(Turma).where(Turma.school_id == school_id).order_by(Turma.nome)).all()
     ciclos = db.session.scalars(select(Ciclo).order_by(Ciclo.nome)).all()
-    
+
     form.instrutor_id.choices = [(i.id, i.user.nome_completo or i.user.username) for i in instrutores]
     form.turma_id.choices = [(t.id, t.nome) for t in turmas]
-    
+
     # CORREÇÃO: Popula as opções de disciplina no POST antes de validar
     if request.method == 'POST':
         disciplinas_do_school = db.session.scalars(select(Disciplina).where(Disciplina.school_id == school_id)).all()
@@ -103,7 +111,7 @@ def editar_vinculo(vinculo_id):
 
     form = VinculoForm(obj=vinculo)
     school_id = UserService.get_current_school_id()
-    
+
     instrutores = db.session.scalars(select(Instrutor).join(User).order_by(User.nome_completo)).all()
     turmas = db.session.scalars(select(Turma).where(Turma.school_id == school_id).order_by(Turma.nome)).all()
     disciplinas = db.session.scalars(select(Disciplina).where(Disciplina.school_id == school_id).order_by(Disciplina.materia)).all()
@@ -111,12 +119,12 @@ def editar_vinculo(vinculo_id):
     form.instrutor_id.choices = [(i.id, i.user.nome_completo or i.user.username) for i in instrutores]
     form.turma_id.choices = [(t.id, t.nome) for t in turmas]
     form.disciplina_id.choices = [(d.id, d.materia) for d in disciplinas]
-    
+
     if form.validate_on_submit():
         success, message = VinculoService.edit_vinculo(vinculo_id, form.instrutor_id.data, form.turma_id.data, form.disciplina_id.data)
         flash(message, 'success' if success else 'danger')
         return redirect(url_for('vinculo.gerenciar_vinculos'))
-    
+
     turma_atual = db.session.scalar(select(Turma).where(Turma.nome == vinculo.pelotao))
     if turma_atual:
         form.turma_id.data = turma_atual.id

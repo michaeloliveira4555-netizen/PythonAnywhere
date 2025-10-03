@@ -32,7 +32,7 @@ def index():
         if not current_user.aluno_profile or not current_user.aluno_profile.turma:
             flash("Você não está matriculado em nenhuma turma. Contate a administração.", 'warning')
             return redirect(url_for('main.dashboard'))
-        
+
         turma_do_aluno = current_user.aluno_profile.turma
         school_id = turma_do_aluno.school_id
         turma_selecionada_nome = turma_do_aluno.nome
@@ -42,32 +42,32 @@ def index():
         if not school_id:
             flash("Nenhuma escola associada ou selecionada.", "warning")
             return redirect(url_for('main.dashboard'))
-        
+
         todas_as_turmas = db.session.scalars(
             select(Turma).where(Turma.school_id == school_id).order_by(Turma.nome)
         ).all()
         turma_selecionada_nome = request.args.get('pelotao', session.get('ultima_turma_visualizada'))
-        
+
         if not turma_selecionada_nome and todas_as_turmas:
             turma_selecionada_nome = todas_as_turmas[0].nome
         elif turma_selecionada_nome and turma_selecionada_nome not in [t.nome for t in todas_as_turmas]:
-             flash("Turma selecionada inválida.", "danger")
-             turma_selecionada_nome = todas_as_turmas[0].nome if todas_as_turmas else None
+            flash("Turma selecionada inválida.", "danger")
+            turma_selecionada_nome = todas_as_turmas[0].nome if todas_as_turmas else None
 
     ciclo_selecionado_id = request.args.get('ciclo', session.get('ultimo_ciclo_horario', 1), type=int)
     session['ultimo_ciclo_horario'] = ciclo_selecionado_id
-    
+
     ciclos = db.session.scalars(select(Ciclo).order_by(Ciclo.id)).all()
-    
+
     todas_as_semanas = []
     if school_id:
         todas_as_semanas = db.session.scalars(
             select(Semana).where(Semana.ciclo_id == ciclo_selecionado_id).order_by(Semana.data_inicio.desc())
         ).all()
-    
+
     semana_id = request.args.get('semana_id')
     semana_selecionada = HorarioService.get_semana_selecionada(semana_id, ciclo_selecionado_id)
-    
+
     horario_matrix = None
     datas_semana = {}
     if turma_selecionada_nome and semana_selecionada:
@@ -84,7 +84,7 @@ def index():
         can_schedule_in_this_turma = True
     elif current_user.role == 'instrutor' and current_user.instrutor_profile:
         instrutor_id = current_user.instrutor_profile.id
-        
+
         pelotao_names = db.session.scalars(
             select(DisciplinaTurma.pelotao).where(
                 or_(
@@ -93,12 +93,12 @@ def index():
                 )
             ).distinct()
         ).all()
-        
+
         if pelotao_names:
             instrutor_turmas_vinculadas = db.session.scalars(
                 select(Turma).where(Turma.nome.in_(pelotao_names)).order_by(Turma.nome)
             ).all()
-        
+
         if turma_selecionada_nome in pelotao_names:
             can_schedule_in_this_turma = True
 
@@ -125,7 +125,7 @@ def editar_horario_grid(pelotao, semana_id, ciclo_id):
         return redirect(url_for('horario.index'))
 
     context_data = HorarioService.get_edit_grid_context(pelotao, semana_id, ciclo_id, current_user)
-    
+
     if not context_data.get('success'):
         flash(context_data.get('message', 'Erro ao carregar dados para edição.'), 'danger')
         return redirect(url_for('horario.index'))
@@ -139,7 +139,7 @@ def get_aula_details(horario_id):
     aula_details = HorarioService.get_aula_details(horario_id, current_user)
     if not aula_details:
         return jsonify({'success': False, 'message': 'Aula não encontrada ou acesso negado.'}), 404
-    
+
     return jsonify({'success': True, **aula_details})
 
 
@@ -157,7 +157,7 @@ def remover_aula():
     data = request.json
     horario_id = data.get('horario_id')
     success, message = HorarioService.remove_aula(horario_id, current_user)
-    
+
     if success:
         return jsonify({'success': True, 'message': message})
     else:
@@ -175,6 +175,6 @@ def aprovar_horarios():
         success, message = HorarioService.aprovar_horario(horario_id, action)
         flash(message, 'success' if success else 'danger')
         return redirect(url_for('horario.aprovar_horarios'))
-        
+
     aulas_pendentes = HorarioService.get_aulas_pendentes()
     return render_template('aprovar_horarios.html', aulas_pendentes=aulas_pendentes, form=form)

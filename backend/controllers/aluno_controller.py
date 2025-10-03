@@ -94,7 +94,7 @@ class EditAlunoForm(FlaskForm):
 def listar_alunos():
     delete_form = DeleteForm()
     turma_filtrada = request.args.get('turma', None)
-    
+
     school_id = _ensure_school_id_for_current_user()
     if not school_id:
         flash('Nenhuma escola associada ou selecionada.', 'danger')

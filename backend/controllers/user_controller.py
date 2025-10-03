@@ -20,10 +20,13 @@ from flask_login import current_user, login_required
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
-# secure_filename não é usado neste módulo atualmente
 from flask_wtf import FlaskForm
-# --- SelectField ADICIONADO ---
-from wtforms import StringField, PasswordField, SubmitField, SelectField
+from wtforms import (
+    StringField,
+    PasswordField,
+    SubmitField,
+    SelectField,
+)
 from wtforms.validators import DataRequired, Email, EqualTo, Optional
 
 # ===== DB =====
@@ -63,7 +66,7 @@ user_bp = Blueprint("user", __name__, url_prefix="/user")
 class MeuPerfilForm(FlaskForm):
     nome_completo = StringField('Nome Completo', validators=[DataRequired()])
     email = StringField('E-mail', validators=[DataRequired(), Email()])
-    
+
     # --- CAMPO ALTERADO PARA SelectField ---
     posto_graduacao = SelectField('Posto/Graduação', choices=[
         ('Soldado', 'Soldado'), ('Cabo', 'Cabo'), ('3º Sargento', '3º Sargento'),
@@ -152,7 +155,7 @@ def meu_perfil():
             current_user.nome_completo = form.nome_completo.data
             # --- ATUALIZAÇÃO DO POSTO/GRADUAÇÃO ---
             current_user.posto_graduacao = form.posto_graduacao.data
-            
+
             # Verifica se o email foi alterado e se já existe
             if form.email.data != current_user.email:
                 if exists_in_users_by("email", form.email.data):
