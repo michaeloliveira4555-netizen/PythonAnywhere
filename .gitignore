@@ -24,3 +24,12 @@ instance/
 # Arquivos do Sistema Operacional
 .DS_Store
 Thumbs.db
+
+# Artefatos de ambiente virtual e testes
+Lib/
+Include/
+Scripts/
+share/
+.pytest_cache/
+.coverage
+scripts/*.exe
